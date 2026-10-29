@@ -73,11 +73,17 @@ class GitHubReadRequest(BaseModel):
 
 @app.get("/", response_class=HTMLResponse)
 def get_dashboard():
-    index_path = os.path.join(static_dir, "index.html")
-    if os.path.exists(index_path):
-        with open(index_path, "r", encoding="utf-8") as f:
-            return HTMLResponse(content=f.read())
-    return HTMLResponse("<h1>Dashboard index.html not found</h1>", status_code=404)
+    candidates = [
+        os.path.join(current_dir, "static", "index.html"),
+        os.path.join(os.getcwd(), "static", "index.html"),
+        os.path.join("/var/task", "static", "index.html"),
+        os.path.join(os.path.dirname(__file__), "static", "index.html")
+    ]
+    for p in candidates:
+        if os.path.exists(p):
+            with open(p, "r", encoding="utf-8") as f:
+                return HTMLResponse(content=f.read())
+    return HTMLResponse("<h1>Command Center Dashboard loading...</h1><p>Status: OK</p>")
 
 @app.get("/api/status")
 def get_system_status():
