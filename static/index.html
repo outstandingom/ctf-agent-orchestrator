@@ -189,6 +189,15 @@
               </div>
             </div>
 
+            <!-- File Attachment Widget -->
+            <div class="mb-3 flex items-center justify-between gap-2">
+              <input type="file" id="challenge-file-input" class="hidden" onchange="handleFileUpload(event)" />
+              <button type="button" onclick="document.getElementById('challenge-file-input').click()" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs rounded-lg text-slate-300 flex items-center gap-1.5 transition">
+                <span>📁</span> Attach Binary / Forensics File
+              </button>
+              <span id="upload-status" class="text-[11px] text-slate-400 font-mono truncate max-w-[220px]"></span>
+            </div>
+
             <textarea id="challenge-prompt" rows="7" placeholder="Paste challenge description, error traces, ciphertext, or goal here..." class="w-full bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500 font-mono"></textarea>
 
             <div class="mt-4 flex items-center justify-between">
@@ -581,7 +590,58 @@
       }
     }
 
-    // Solve Challenge
+    let lastRawSolution = "";
+
+    // File Upload Handler
+    async function handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const statusEl = document.getElementById('upload-status');
+      statusEl.textContent = `Uploading ${file.name}...`;
+      statusEl.className = 'text-[11px] text-cyan-400 font-mono animate-pulse';
+
+      const formData = new FormData();
+      formData.append('file', file);
+      try {
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        if (data.file_path) {
+          statusEl.textContent = `✓ Attached: ${file.name}`;
+          statusEl.className = 'text-[11px] text-emerald-400 font-mono';
+          const promptEl = document.getElementById('challenge-prompt');
+          promptEl.value += `\n[Target File: ${data.file_path}]\nExtract magic bytes, analyze strings, and solve for the flag.`;
+        }
+      } catch (e) {
+        statusEl.textContent = `Upload error: ${e.message}`;
+        statusEl.className = 'text-[11px] text-rose-400 font-mono';
+      }
+    }
+
+    function renderTraceItem(item) {
+      return `
+        <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-3 text-xs space-y-1.5 animate-fadeIn">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-cyan-400 flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+              Turn ${item.turn || '•'}: ${item.tool}
+            </span>
+            <span class="text-[10px] text-emerald-400 font-mono">Executed</span>
+          </div>
+          <div class="text-[11px] font-mono text-slate-400 bg-slate-950 p-2 rounded-lg truncate">
+            Args: ${JSON.stringify(item.args)}
+          </div>
+          <details class="text-[11px]">
+            <summary class="cursor-pointer text-slate-400 hover:text-cyan-400 select-none">View Tool Output</summary>
+            <pre class="bg-slate-950 p-2.5 rounded-lg text-emerald-400 font-mono mt-1 overflow-x-auto whitespace-pre-wrap max-h-36">${item.output}</pre>
+          </details>
+        </div>
+      `;
+    }
+
+    // Solve Challenge with Real-Time Streaming & Fallback
     async function executeSolve() {
       const prompt = document.getElementById('challenge-prompt').value.trim();
       if (!prompt) {
@@ -598,46 +658,67 @@
 
       btn.disabled = true;
       spinner.classList.remove('hidden');
-      traceContainer.innerHTML = '<div class="text-xs text-cyan-400 animate-pulse p-3 text-center">🤖 Agent running multi-turn reasoning and tool calls...</div>';
-      solutionOutput.innerHTML = '<p class="text-xs text-slate-500 animate-pulse">Synthesizing solution...</p>';
+      traceContainer.innerHTML = '<div class="text-xs text-cyan-400 animate-pulse p-3 text-center">🤖 Agent initialized: streaming tool execution turns...</div>';
+      solutionOutput.innerHTML = '<p class="text-xs text-slate-500 animate-pulse">Running autonomous reasoning and exploit verification...</p>';
+
+      let liveTraces = [];
 
       try {
+        // Attempt SSE Streaming first for instant real-time feedback and Vercel timeout immunity
+        const response = await fetch('/api/solve/stream', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt, provider })
+        });
+
+        if (response.ok && response.body) {
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop(); // keep last incomplete line
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                const dataStr = line.substring(6).trim();
+                if (dataStr === '[DONE]') break;
+                try {
+                  const ev = JSON.parse(dataStr);
+                  if (ev.type === 'tool_call' && ev.item) {
+                    liveTraces.push(ev.item);
+                    traceCount.textContent = `${liveTraces.length} tool calls`;
+                    traceContainer.innerHTML = liveTraces.map(renderTraceItem).join('');
+                  } else if (ev.type === 'final_answer') {
+                    lastRawSolution = ev.final_answer;
+                    solutionOutput.innerHTML = marked.parse(lastRawSolution);
+                    Prism.highlightAllUnder(solutionOutput);
+                  }
+                } catch(e) {}
+              }
+            }
+          }
+          if (lastRawSolution) return;
+        }
+
+        // Fallback to standard POST /api/solve
         const res = await fetch('/api/solve', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ prompt, provider })
         });
         const data = await res.json();
-
-        // Render Trace
         const trace = data.trace || [];
         traceCount.textContent = `${trace.length} tool calls`;
-        if (trace.length === 0) {
-          traceContainer.innerHTML = '<div class="text-xs text-slate-400 p-2">Direct reasoning (no external tool calls needed).</div>';
-        } else {
-          traceContainer.innerHTML = trace.map(item => `
-            <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-3 text-xs space-y-1.5">
-              <div class="flex items-center justify-between">
-                <span class="font-bold text-cyan-400 flex items-center gap-1.5">
-                  <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
-                  Turn ${item.turn}: ${item.tool}
-                </span>
-                <span class="text-[10px] text-slate-500 font-mono">Completed</span>
-              </div>
-              <div class="text-[11px] font-mono text-slate-400 bg-slate-950 p-2 rounded-lg truncate">
-                Args: ${JSON.stringify(item.args)}
-              </div>
-              <details class="text-[11px]">
-                <summary class="cursor-pointer text-slate-400 hover:text-cyan-400 select-none">View Raw Output</summary>
-                <pre class="bg-slate-950 p-2.5 rounded-lg text-emerald-400 font-mono mt-1 overflow-x-auto whitespace-pre-wrap max-h-36">${item.output}</pre>
-              </details>
-            </div>
-          `).join('');
-        }
+        traceContainer.innerHTML = trace.length ? trace.map(renderTraceItem).join('') : '<div class="text-xs text-slate-400 p-2">Direct reasoning (no external tool calls needed).</div>';
 
-        // Render Markdown Solution
-        const rawMd = data.final_answer || 'No output produced.';
-        solutionOutput.innerHTML = marked.parse(rawMd);
+        lastRawSolution = data.final_answer || 'No output produced.';
+        solutionOutput.innerHTML = marked.parse(lastRawSolution);
         Prism.highlightAllUnder(solutionOutput);
 
       } catch (err) {
@@ -650,35 +731,41 @@
 
     // Copy Solution
     function copyOutput() {
-      const el = document.getElementById('solution-output');
-      navigator.clipboard.writeText(el.innerText).then(() => {
+      const textToCopy = lastRawSolution || document.getElementById('solution-output').innerText;
+      navigator.clipboard.writeText(textToCopy).then(() => {
         alert('Solution copied to clipboard!');
       });
     }
 
-    // Commit Solver to GitHub
+    // Commit Solver to GitHub (Extracts clean Python script instead of raw HTML)
     async function commitSolverToGitHub() {
       const repo = document.getElementById('commit-repo').value.trim();
       const path = document.getElementById('commit-path').value.trim();
       const message = document.getElementById('commit-msg').value.trim();
-      const content = document.getElementById('solution-output').innerText.trim();
       const resEl = document.getElementById('commit-result');
 
-      if (!content) {
+      if (!lastRawSolution) {
         resEl.innerHTML = '<span class="text-rose-400">Cannot commit: No solution generated yet.</span>';
         return;
       }
 
-      resEl.innerHTML = '<span class="text-cyan-400 animate-pulse">Committing to GitHub via Render MCP Gateway...</span>';
+      // Extract clean Python code if present, otherwise commit raw markdown
+      let cleanCode = lastRawSolution;
+      const codeMatch = lastRawSolution.match(/```(?:python|py)?\s*([\s\S]*?)\s*```/i);
+      if (codeMatch && codeMatch[1] && codeMatch[1].trim()) {
+        cleanCode = codeMatch[1].trim();
+      }
+
+      resEl.innerHTML = '<span class="text-cyan-400 animate-pulse">Committing clean exploit script via Render MCP Gateway...</span>';
 
       try {
         const res = await fetch('/api/github/commit', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ repo, path, content, message })
+          body: JSON.stringify({ repo, path, content: cleanCode, message })
         });
         const data = await res.json();
-        resEl.innerHTML = `<span class="text-emerald-400 font-mono">✓ Successfully committed to ${repo}/${path}</span>`;
+        resEl.innerHTML = `<span class="text-emerald-400 font-mono">✓ Successfully committed clean script to ${repo}/${path}</span>`;
       } catch (err) {
         resEl.innerHTML = `<span class="text-rose-400">Error: ${err.message}</span>`;
       }

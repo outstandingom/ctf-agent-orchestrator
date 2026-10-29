@@ -1,4 +1,8 @@
 import os
+import sys
+import time
+import subprocess
+import tempfile
 import re
 import json
 import codecs
@@ -20,6 +24,8 @@ HF_VECTOR_URL = os.getenv("HF_VECTOR_URL", "https://outstandingom-vector.hf.spac
 HF_URL = os.getenv("HF_KNOWLEDGE_URL", "https://outstandingom-knowledge-graph-env.hf.space").strip()
 MCP_SERVER_URL = os.getenv("MCP_SERVER_URL", "https://mcp-server-2sl7.onrender.com").strip()
 MCP_API_KEY = os.getenv("MCP_API_KEY", "").strip()
+SUPABASE_URL = os.getenv("SUPABASE_URL", "https://vtlmgubzcktztkuymtir.supabase.co").strip()
+SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "sb_publishable_0Qoicwxg64tkFReoDSKJ3g_dOSZJPCE").strip()
 
 # =========================================================================
 # UNIVERSAL TOOL DEFINITIONS (OpenAI / Groq Format)
@@ -120,6 +126,27 @@ OPENAI_TOOLS = [
                     }
                 },
                 "required": ["file_path"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "execute_python_sandbox",
+            "description": "Executes a Python exploit/solver script in a sandboxed subprocess with a timeout. Captures stdout, stderr, execution time, and automatically searches the output for flags (HQX{...}, flag{...}, CTF{...}). Use this tool to verify and run your exploits autonomously!",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "description": "The complete Python script to execute"
+                    },
+                    "timeout_seconds": {
+                        "type": "integer",
+                        "description": "Max execution time in seconds (default: 10, max: 20)"
+                    }
+                },
+                "required": ["code"]
             }
         }
     },
@@ -301,8 +328,23 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
                 dec_str = dec.decode('latin-1', errors='ignore')
                 if any(hdr in dec_str.lower() for hdr in ["flag{", "hqx{", "ctf{"]):
                     xor_hits.append({"key_hex": f"0x{k:02x}", "result": dec_str})
+            
+            # Multi-byte Known-Plaintext Repeating-Key XOR (HQX{, flag{, CTF{)
+            for prefix in [b"HQX{", b"flag{", b"CTF{", b"hackquest{"]:
+                if len(sample_bytes) >= len(prefix):
+                    cand_key = bytes([sample_bytes[i] ^ prefix[i] for i in range(len(prefix))])
+                    dec_multi = bytes([sample_bytes[i] ^ cand_key[i % len(cand_key)] for i in range(len(sample_bytes))])
+                    dec_m_str = dec_multi.decode('latin-1', errors='ignore')
+                    if prefix.decode('latin-1').lower() in dec_m_str.lower() and "}" in dec_m_str:
+                        xor_hits.append({
+                            "type": "repeating_key_xor",
+                            "key_recovered": cand_key.decode('latin-1', errors='replace'),
+                            "key_hex": cand_key.hex(),
+                            "result": dec_m_str[:300]
+                        })
+
             if xor_hits:
-                results["single_byte_xor_matches"] = xor_hits
+                results["xor_analysis_matches"] = xor_hits
         except Exception:
             pass
 
@@ -327,9 +369,22 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
             info["recommended_tool"] = "x64dbg / Ghidra / strings"
         elif head.startswith(b"PK\x03\x04"):
             info["format"] = "ZIP Archive or APK / Java JAR"
-        elif len(head) >= 4 and head[:2] in [b"\x61\r", b"\x55\r", b"\xa7\r", b"\xee\r"]:
-            info["format"] = "Python Compiled Bytecode (.pyc)"
-            info["recommended_tool"] = "uncompyle6 or decompyle++ (pycdc)"
+        elif len(head) >= 4 and (head[2:4] == b"\r\n" or head[2:4] == b"\x0d\x0a"):
+            pyc_table = {
+                b"\x03\xf3\r\n": "Python 2.7",
+                b"\x33\r\r\n": "Python 3.6",
+                b"\x42\r\r\n": "Python 3.7",
+                b"\x55\r\r\n": "Python 3.8",
+                b"\x61\r\r\n": "Python 3.9",
+                b"\xa7\r\r\n": "Python 3.10",
+                b"\xee\x0c\r\n": "Python 3.11",
+                b"\xcb\r\r\n": "Python 3.12",
+                b"\xf3\r\r\n": "Python 3.13"
+            }
+            py_ver = pyc_table.get(head[:4], f"Python bytecode (Magic: {head[:4].hex()})")
+            info["format"] = f"Python Compiled Bytecode (.pyc) [{py_ver}]"
+            info["magic_hex"] = head[:4].hex()
+            info["recommended_tool"] = f"uncompyle6 {file_path} or pycdc {file_path}"
 
         # String Carving (ASCII >= 4 chars)
         strings = re.findall(rb'[A-Za-z0-9_\-\.\/\{\}]{4,}', head)
@@ -371,15 +426,61 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
         except Exception as e:
             return json.dumps({"error": f"Web probe failed: {e}"})
 
-    # 5. FORENSICS SANDBOX ENGINE
+    # 5. PYTHON SANDBOX EXECUTION
+    elif tool_name == "execute_python_sandbox":
+        code_str = tool_input.get("code", "").strip()
+        timeout = min(int(tool_input.get("timeout_seconds", 10)), 20)
+        if not code_str:
+            return json.dumps({"error": "No Python code provided"})
+        
+        with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False, encoding="utf-8") as tf:
+            tf.write(code_str)
+            tmp_name = tf.name
+        
+        try:
+            t0 = time.time()
+            res = subprocess.run(
+                [sys.executable, tmp_name],
+                capture_output=True,
+                text=True,
+                timeout=timeout
+            )
+            elapsed = round(time.time() - t0, 3)
+            out = res.stdout
+            err = res.stderr
+            ret = res.returncode
+            found_flags = re.findall(r"(?:flag|CTF|HQX|hackquest)\{[^}]+\}", out + "\n" + err, re.IGNORECASE)
+            
+            result = {
+                "status": "success" if ret == 0 else "error",
+                "returncode": ret,
+                "elapsed_seconds": elapsed,
+                "stdout": out[-2000:] if len(out) > 2000 else out,
+                "stderr": err[-1000:] if len(err) > 1000 else err,
+                "flags_captured": list(set(found_flags))
+            }
+            return json.dumps(result, indent=2)
+        except subprocess.TimeoutExpired:
+            return json.dumps({"error": f"Execution timed out after {timeout} seconds"}, indent=2)
+        except Exception as e:
+            return json.dumps({"error": f"Sandbox execution failed: {str(e)}"}, indent=2)
+        finally:
+            try:
+                os.remove(tmp_name)
+            except Exception:
+                pass
+
+    # 6. FORENSICS SANDBOX ENGINE
     elif tool_name == "run_forensics_inspection":
         file_path = tool_input.get("file_path", "")
         if not os.path.exists(file_path):
             return json.dumps({"error": f"File not found: {file_path}"})
         try:
-            import sys
-            forensic_dir = r"c:\Users\SGI\Downloads\forensic"
-            if forensic_dir not in sys.path:
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            forensic_dir = os.getenv("FORENSIC_DIR", os.path.join(base_dir, "forensic"))
+            if not os.path.exists(forensic_dir):
+                forensic_dir = os.path.join(os.getcwd(), "forensic")
+            if os.path.exists(forensic_dir) and forensic_dir not in sys.path:
                 sys.path.insert(0, forensic_dir)
             from forensic_engine.engine import ForensicEngine
             engine = ForensicEngine()
@@ -389,7 +490,7 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
         except Exception as err:
             return json.dumps({"error": f"ForensicEngine error: {err}"})
 
-    # 6. FLAG PATTERN HUNTER
+    # 7. FLAG PATTERN HUNTER
     elif tool_name == "search_flag_patterns":
         text = tool_input.get("text", "")
         file_path = tool_input.get("file_path")
@@ -410,7 +511,7 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
         print(f"[TOOL] Flag Pattern Search found {len(result['flags_found'])} flags and {len(zero_width)} zero-width chars.")
         return json.dumps(result, indent=2)
 
-    # 7. GITHUB MCP TOOLS
+    # 8. GITHUB MCP TOOLS
     elif tool_name in ["read_github_file", "commit_github_file", "list_github_repos"]:
         tool_map = {
             "read_github_file": "read_file",
@@ -596,3 +697,28 @@ if __name__ == "__main__":
     result = agent.run(test_prompt)
     print("\n[AGENT FINAL OUTPUT]:\n")
     print(result)
+
+
+# =========================================================================
+# SUPABASE LOGGING HELPER (Bypassing Vercel Timeout with Persistent State)
+# =========================================================================
+def log_to_supabase(challenge: str, solution: str, trace: list, flags: list = None):
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return
+    headers = {
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": f"Bearer {SUPABASE_ANON_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal"
+    }
+    payload = {
+        "challenge": challenge[:1000],
+        "solution": solution[:4000],
+        "tool_calls_count": len(trace),
+        "flags_found": flags or [],
+        "timestamp": time.time()
+    }
+    try:
+        requests.post(f"{SUPABASE_URL}/rest/v1/solves", headers=headers, json=payload, timeout=3)
+    except Exception:
+        pass

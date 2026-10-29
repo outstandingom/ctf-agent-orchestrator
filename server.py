@@ -5,8 +5,8 @@ import time
 import requests
 from concurrent.futures import ThreadPoolExecutor
 from typing import Optional, List, Dict, Any
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
+from fastapi import FastAPI, HTTPException, Request, File, UploadFile
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -182,7 +182,12 @@ def get_system_status():
 
     # 4. Forensic Sandbox Engine
     try:
-        sys.path.insert(0, r"c:\Users\SGI\Downloads\forensic")
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        forensic_dir = os.getenv("FORENSIC_DIR", os.path.join(base_dir, "forensic"))
+        if not os.path.exists(forensic_dir):
+            forensic_dir = os.path.join(os.getcwd(), "forensic")
+        if os.path.exists(forensic_dir) and forensic_dir not in sys.path:
+            sys.path.insert(0, forensic_dir)
         from forensic_engine.engine import ForensicEngine
         status["services"]["forensic_engine"] = {
             "name": "Forensic Sandbox Engine",
@@ -197,6 +202,51 @@ def get_system_status():
         }
 
     return status
+
+
+@app.post("/api/upload")
+@app.post("/upload")
+async def upload_challenge_file(file: UploadFile = File(...)):
+    import tempfile, shutil
+    temp_dir = tempfile.mkdtemp(prefix="ctf_challenge_")
+    safe_name = os.path.basename(file.filename)
+    dest_path = os.path.join(temp_dir, safe_name)
+    with open(dest_path, "wb") as f_out:
+        shutil.copyfileobj(file.file, f_out)
+    return {
+        "status": "success",
+        "filename": safe_name,
+        "file_path": dest_path,
+        "size_bytes": os.path.getsize(dest_path)
+    }
+
+@app.post("/api/solve/stream")
+@app.post("/solve/stream")
+def solve_challenge_stream(req: SolveRequest):
+    if not req.prompt.strip():
+        raise HTTPException(status_code=400, detail="Challenge prompt is required.")
+
+    def event_stream():
+        yield f"data: {json.dumps({'type': 'init', 'message': 'Agent dispatched'})}\n\n"
+        
+        agent = CTFOrchestratorAgent()
+        if req.provider:
+            agent.provider = req.provider.lower()
+            if req.provider.lower() == "groq" and req.model:
+                agent.model = req.model
+
+        t0 = time.time()
+        result = agent.run_with_trace(req.prompt)
+        elapsed = round(time.time() - t0, 2)
+        result["elapsed_seconds"] = elapsed
+
+        for item in result.get("trace", []):
+            yield f"data: {json.dumps({'type': 'tool_call', 'item': item})}\n\n"
+
+        yield f"data: {json.dumps({'type': 'final_answer', 'final_answer': result.get('final_answer', ''), 'trace': result.get('trace', []), 'elapsed_seconds': elapsed})}\n\n"
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 @app.post("/api/solve")
 @app.post("/solve")
