@@ -269,15 +269,27 @@ class CTFOrchestratorAgent:
             self.model = CLAUDE_MODEL
 
     def run(self, user_prompt: str, max_turns: int = 10) -> str:
+        trace_result = self.run_with_trace(user_prompt, max_turns)
+        return trace_result.get("final_answer", "")
+
+    def run_with_trace(self, user_prompt: str, max_turns: int = 10) -> dict:
         print(f"\n[CTF AGENT STARTED] Engine: {self.provider.upper()} | Model: {self.model}", flush=True)
         print(f"Task: {user_prompt}\n" + "-"*50, flush=True)
 
+        trace = []
         if self.provider == "groq":
-            return self._run_groq(user_prompt, max_turns)
+            final_ans = self._run_groq_trace(user_prompt, max_turns, trace)
         else:
-            return self._run_anthropic(user_prompt, max_turns)
+            final_ans = self._run_anthropic_trace(user_prompt, max_turns, trace)
 
-    def _run_groq(self, user_prompt: str, max_turns: int) -> str:
+        return {
+            "final_answer": final_ans,
+            "trace": trace,
+            "provider": self.provider,
+            "model": self.model
+        }
+
+    def _run_groq_trace(self, user_prompt: str, max_turns: int, trace: list) -> str:
         messages = [
             {"role": "system", "content": self.system_prompt},
             {"role": "user", "content": user_prompt}
@@ -303,6 +315,13 @@ class CTFOrchestratorAgent:
                         fn_args = {}
 
                     tool_output = execute_tool(fn_name, fn_args)
+                    trace.append({
+                        "turn": turn + 1,
+                        "type": "tool_call",
+                        "tool": fn_name,
+                        "args": fn_args,
+                        "output": tool_output
+                    })
 
                     messages.append({
                         "role": "tool",
@@ -314,7 +333,7 @@ class CTFOrchestratorAgent:
 
         return "Agent reached maximum execution turns."
 
-    def _run_anthropic(self, user_prompt: str, max_turns: int) -> str:
+    def _run_anthropic_trace(self, user_prompt: str, max_turns: int, trace: list) -> str:
         import anthropic
         claude_tools = [
             {
@@ -349,6 +368,13 @@ class CTFOrchestratorAgent:
                 for block in assistant_content:
                     if block.type == "tool_use":
                         output = execute_tool(block.name, block.input)
+                        trace.append({
+                            "turn": turn + 1,
+                            "type": "tool_call",
+                            "tool": block.name,
+                            "args": block.input,
+                            "output": output
+                        })
                         tool_results.append({
                             "type": "tool_result",
                             "tool_use_id": block.id,
