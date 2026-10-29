@@ -8,6 +8,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from pydantic import BaseModel, Field
 
 # Ensure local modules are accessible
@@ -29,7 +30,8 @@ from agent import (
 app = FastAPI(
     title="CTF AI Orchestrator Command Center",
     description="Unified Cyber Dashboard & Real-Time Mission Control for CTF AI Agent, ZeroGPU Vector RAG, and GitHub MCP Gateway.",
-    version="2.0.0"
+    version="2.0.0",
+    redirect_slashes=False
 )
 
 app.add_middleware(
@@ -43,7 +45,10 @@ app.add_middleware(
 # Static files mount
 static_dir = os.path.join(current_dir, "static")
 os.makedirs(static_dir, exist_ok=True)
-app.mount("/static", StaticFiles(directory=static_dir), name="static")
+try:
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
+except Exception:
+    pass
 
 # Request Models
 class SolveRequest(BaseModel):
@@ -71,8 +76,7 @@ class GitHubReadRequest(BaseModel):
     path: str = Field(..., description="File path")
     branch: Optional[str] = Field("main", description="Branch name")
 
-@app.get("/", response_class=HTMLResponse)
-def get_dashboard():
+def render_dashboard_html() -> str:
     candidates = [
         os.path.join(current_dir, "static", "index.html"),
         os.path.join(os.getcwd(), "static", "index.html"),
@@ -82,10 +86,26 @@ def get_dashboard():
     for p in candidates:
         if os.path.exists(p):
             with open(p, "r", encoding="utf-8") as f:
-                return HTMLResponse(content=f.read())
-    return HTMLResponse("<h1>Command Center Dashboard loading...</h1><p>Status: OK</p>")
+                return f.read()
+    return "<h1>CTF AI Orchestrator Command Center</h1><p>Dashboard is online and operational.</p>"
+
+@app.get("/", response_class=HTMLResponse)
+@app.get("/api", response_class=HTMLResponse)
+@app.get("/api/", response_class=HTMLResponse)
+@app.get("/api/index", response_class=HTMLResponse)
+@app.get("/api/index.py", response_class=HTMLResponse)
+@app.get("/index", response_class=HTMLResponse)
+def get_dashboard():
+    return HTMLResponse(content=render_dashboard_html())
+
+@app.exception_handler(StarletteHTTPException)
+async def custom_http_exception_handler(request: Request, exc: StarletteHTTPException):
+    if exc.status_code == 404 and request.method == "GET":
+        return HTMLResponse(content=render_dashboard_html())
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
 @app.get("/api/status")
+@app.get("/status")
 def get_system_status():
     status = {
         "timestamp": time.time(),
@@ -169,6 +189,7 @@ def get_system_status():
     return status
 
 @app.post("/api/solve")
+@app.post("/solve")
 def solve_challenge(req: SolveRequest):
     if not req.prompt.strip():
         raise HTTPException(status_code=400, detail="Challenge prompt is required.")
@@ -186,6 +207,7 @@ def solve_challenge(req: SolveRequest):
     return result
 
 @app.post("/api/rag/search")
+@app.post("/rag/search")
 def search_rag(req: RAGSearchRequest):
     output = execute_tool("search_knowledge_base", {
         "query": req.query,
@@ -194,6 +216,7 @@ def search_rag(req: RAGSearchRequest):
     return {"query": req.query, "results": output}
 
 @app.post("/api/forensics/scan")
+@app.post("/forensics/scan")
 def scan_forensics(req: ForensicsScanRequest):
     res = {}
     if req.text:
@@ -213,6 +236,7 @@ def scan_forensics(req: ForensicsScanRequest):
     return res
 
 @app.get("/api/github/repos")
+@app.get("/github/repos")
 def list_repos():
     repos_raw = execute_tool("list_github_repos", {"per_page": 15})
     try:
@@ -221,6 +245,7 @@ def list_repos():
         return {"data": repos_raw}
 
 @app.post("/api/github/commit")
+@app.post("/github/commit")
 def commit_file(req: GitHubCommitRequest):
     res = execute_tool("commit_github_file", {
         "repo": req.repo,
@@ -234,6 +259,7 @@ def commit_file(req: GitHubCommitRequest):
         return {"output": res}
 
 @app.post("/api/github/read")
+@app.post("/github/read")
 def read_file(req: GitHubReadRequest):
     res = execute_tool("read_github_file", {
         "repo": req.repo,
