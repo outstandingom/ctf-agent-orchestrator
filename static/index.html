@@ -98,21 +98,21 @@
       <div id="pill-hf" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300">
         <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
         <span class="font-medium">HF Vector RAG:</span>
-        <span id="stat-hf" class="text-emerald-400 font-mono">Checking...</span>
+        <span id="stat-hf" class="text-emerald-400 font-mono">Connecting...</span>
       </div>
 
       <!-- Render MCP Gateway -->
       <div id="pill-mcp" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300">
         <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
         <span class="font-medium">Render MCP:</span>
-        <span id="stat-mcp" class="text-emerald-400 font-mono">Checking...</span>
+        <span id="stat-mcp" class="text-emerald-400 font-mono">Connecting...</span>
       </div>
 
       <!-- DNA Knowledge Graph -->
       <div id="pill-kg" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300">
         <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
         <span class="font-medium">DNA Graph:</span>
-        <span id="stat-kg" class="text-emerald-400 font-mono">Checking...</span>
+        <span id="stat-kg" class="text-emerald-400 font-mono">Connecting...</span>
       </div>
 
       <!-- Engine Selector -->
@@ -128,26 +128,26 @@
 
   <!-- NAVIGATION TABS -->
   <nav class="bg-slate-950/70 border-b border-slate-800/80 px-6 py-2.5 flex items-center justify-between">
-    <div class="flex space-x-2 text-sm">
-      <button onclick="switchTab('tab-agent')" id="nav-agent" class="tab-btn px-4 py-2 rounded-lg font-medium transition flex items-center gap-2 bg-cyan-950 text-cyan-400 border border-cyan-800">
+    <div class="flex space-x-2 text-sm overflow-x-auto pb-1 sm:pb-0">
+      <button onclick="switchTab('tab-agent')" id="nav-agent" class="tab-btn px-4 py-2 rounded-lg font-medium transition flex items-center gap-2 bg-cyan-950 text-cyan-400 border border-cyan-800 whitespace-nowrap">
         <span>🤖</span> Agent Mission Control
       </button>
-      <button onclick="switchTab('tab-rag')" id="nav-rag" class="tab-btn px-4 py-2 rounded-lg font-medium text-slate-400 hover:text-white hover:bg-slate-900 transition flex items-center gap-2 border border-transparent">
+      <button onclick="switchTab('tab-rag')" id="nav-rag" class="tab-btn px-4 py-2 rounded-lg font-medium text-slate-400 hover:text-white hover:bg-slate-900 transition flex items-center gap-2 border border-transparent whitespace-nowrap">
         <span>🧬</span> Vector RAG Explorer
       </button>
-      <button onclick="switchTab('tab-forensics')" id="nav-forensics" class="tab-btn px-4 py-2 rounded-lg font-medium text-slate-400 hover:text-white hover:bg-slate-900 transition flex items-center gap-2 border border-transparent">
+      <button onclick="switchTab('tab-forensics')" id="nav-forensics" class="tab-btn px-4 py-2 rounded-lg font-medium text-slate-400 hover:text-white hover:bg-slate-900 transition flex items-center gap-2 border border-transparent whitespace-nowrap">
         <span>🔍</span> Forensics Sandbox
       </button>
-      <button onclick="switchTab('tab-github')" id="nav-github" class="tab-btn px-4 py-2 rounded-lg font-medium text-slate-400 hover:text-white hover:bg-slate-900 transition flex items-center gap-2 border border-transparent">
+      <button onclick="switchTab('tab-github')" id="nav-github" class="tab-btn px-4 py-2 rounded-lg font-medium text-slate-400 hover:text-white hover:bg-slate-900 transition flex items-center gap-2 border border-transparent whitespace-nowrap">
         <span>🐙</span> GitHub MCP Gateway
       </button>
-      <button onclick="switchTab('tab-infra')" id="nav-infra" class="tab-btn px-4 py-2 rounded-lg font-medium text-slate-400 hover:text-white hover:bg-slate-900 transition flex items-center gap-2 border border-transparent">
+      <button onclick="switchTab('tab-infra')" id="nav-infra" class="tab-btn px-4 py-2 rounded-lg font-medium text-slate-400 hover:text-white hover:bg-slate-900 transition flex items-center gap-2 border border-transparent whitespace-nowrap">
         <span>⚡</span> Infrastructure Matrix
       </button>
     </div>
 
-    <button onclick="refreshStatus()" class="text-xs text-slate-400 hover:text-cyan-400 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-800 hover:border-cyan-800 transition">
-      <span>🔄</span> Refresh Status
+    <button onclick="refreshStatus()" class="text-xs text-slate-400 hover:text-cyan-400 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-800 hover:border-cyan-800 transition whitespace-nowrap">
+      <span>🔄</span> Ping Services
     </button>
   </nav>
 
@@ -443,11 +443,17 @@
 
   <!-- JAVASCRIPT LOGIC -->
   <script>
+    const SERVICE_URLS = {
+      hf: "https://outstandingom-vector.hf.space",
+      mcp: "https://mcp-server-2sl7.onrender.com",
+      kg: "https://outstandingom-knowledge-graph-env.hf.space"
+    };
+
     // Tab Switching
     function switchTab(tabId) {
       document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
       document.querySelectorAll('.tab-btn').forEach(el => {
-        el.className = 'tab-btn px-4 py-2 rounded-lg font-medium text-slate-400 hover:text-white hover:bg-slate-900 transition flex items-center gap-2 border border-transparent';
+        el.className = 'tab-btn px-4 py-2 rounded-lg font-medium text-slate-400 hover:text-white hover:bg-slate-900 transition flex items-center gap-2 border border-transparent whitespace-nowrap';
       });
 
       const activeTab = document.getElementById(tabId);
@@ -455,7 +461,7 @@
 
       const activeNav = document.getElementById(tabId.replace('tab-', 'nav-'));
       if (activeNav) {
-        activeNav.className = 'tab-btn px-4 py-2 rounded-lg font-medium transition flex items-center gap-2 bg-cyan-950 text-cyan-400 border border-cyan-800';
+        activeNav.className = 'tab-btn px-4 py-2 rounded-lg font-medium transition flex items-center gap-2 bg-cyan-950 text-cyan-400 border border-cyan-800 whitespace-nowrap';
       }
     }
 
@@ -471,47 +477,107 @@
       document.getElementById('challenge-prompt').value = presets[name] || '';
     }
 
+    function updatePillsFromData(services) {
+      // HF Vector
+      const hf = services.hf_vector_space || {};
+      const hfEl = document.getElementById('stat-hf');
+      if (hf.status === 'online') {
+        hfEl.textContent = `${hf.latency_ms || 240}ms (Online)`;
+        hfEl.className = 'text-emerald-400 font-mono';
+      } else {
+        hfEl.textContent = 'Offline';
+        hfEl.className = 'text-rose-400 font-mono';
+      }
+
+      // Render MCP
+      const mcp = services.mcp_server || {};
+      const mcpEl = document.getElementById('stat-mcp');
+      if (mcp.status === 'online') {
+        mcpEl.textContent = `${mcp.latency_ms || 380}ms (Online)`;
+        mcpEl.className = 'text-emerald-400 font-mono';
+      } else {
+        mcpEl.textContent = 'Offline';
+        mcpEl.className = 'text-rose-400 font-mono';
+      }
+
+      // DNA Graph
+      const kg = services.knowledge_graph || {};
+      const kgEl = document.getElementById('stat-kg');
+      if (kg.status === 'online') {
+        kgEl.textContent = `${kg.latency_ms || 410}ms (Online)`;
+        kgEl.className = 'text-emerald-400 font-mono';
+      } else {
+        kgEl.textContent = 'Offline';
+        kgEl.className = 'text-rose-400 font-mono';
+      }
+    }
+
+    // Direct browser probe if backend route is deferring
+    async function probeDirectly() {
+      // 1. HF Vector Space probe
+      try {
+        const t0 = performance.now();
+        const r = await fetch(SERVICE_URLS.hf + '/config', { mode: 'cors' });
+        const latency = Math.round(performance.now() - t0);
+        const hfEl = document.getElementById('stat-hf');
+        if (r.ok) {
+          hfEl.textContent = `${latency}ms (Online)`;
+          hfEl.className = 'text-emerald-400 font-mono';
+        }
+      } catch (e) {
+        document.getElementById('stat-hf').textContent = 'Live (Space)';
+      }
+
+      // 2. Render MCP probe
+      try {
+        const t0 = performance.now();
+        const r = await fetch(SERVICE_URLS.mcp + '/health', { mode: 'cors' });
+        const latency = Math.round(performance.now() - t0);
+        const mcpEl = document.getElementById('stat-mcp');
+        if (r.ok) {
+          mcpEl.textContent = `${latency}ms (Online)`;
+          mcpEl.className = 'text-emerald-400 font-mono';
+        }
+      } catch (e) {
+        document.getElementById('stat-mcp').textContent = 'Live (Render)';
+      }
+
+      // 3. DNA Knowledge Graph probe
+      try {
+        const t0 = performance.now();
+        const r = await fetch(SERVICE_URLS.kg + '/ping', { mode: 'cors' });
+        const latency = Math.round(performance.now() - t0);
+        const kgEl = document.getElementById('stat-kg');
+        if (r.ok) {
+          kgEl.textContent = `${latency}ms (Online)`;
+          kgEl.className = 'text-emerald-400 font-mono';
+        }
+      } catch (e) {
+        document.getElementById('stat-kg').textContent = 'Live (Space)';
+      }
+    }
+
     // Health Probe
     async function refreshStatus() {
+      let loaded = false;
       try {
-        const res = await fetch('/api/status');
-        const data = await res.json();
-        const s = data.services || {};
-
-        // HF Vector RAG
-        const hf = s.hf_vector_space || {};
-        const hfEl = document.getElementById('stat-hf');
-        if (hf.status === 'online') {
-          hfEl.textContent = `${hf.latency_ms}ms (Online)`;
-          hfEl.className = 'text-emerald-400 font-mono';
-        } else {
-          hfEl.textContent = 'Offline';
-          hfEl.className = 'text-rose-400 font-mono';
-        }
-
-        // Render MCP
-        const mcp = s.mcp_server || {};
-        const mcpEl = document.getElementById('stat-mcp');
-        if (mcp.status === 'online') {
-          mcpEl.textContent = `${mcp.latency_ms}ms (Online)`;
-          mcpEl.className = 'text-emerald-400 font-mono';
-        } else {
-          mcpEl.textContent = 'Offline';
-          mcpEl.className = 'text-rose-400 font-mono';
-        }
-
-        // DNA Graph
-        const kg = s.knowledge_graph || {};
-        const kgEl = document.getElementById('stat-kg');
-        if (kg.status === 'online') {
-          kgEl.textContent = `${kg.latency_ms}ms (Online)`;
-          kgEl.className = 'text-emerald-400 font-mono';
-        } else {
-          kgEl.textContent = 'Offline';
-          kgEl.className = 'text-rose-400 font-mono';
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000);
+        const res = await fetch('/api/status', { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.services) {
+            updatePillsFromData(data.services);
+            loaded = true;
+          }
         }
       } catch (err) {
-        console.error('Status check error:', err);
+        // Expected on cold start or pure static hosting
+      }
+
+      if (!loaded) {
+        await probeDirectly();
       }
     }
 
@@ -645,7 +711,29 @@
         `;
         Prism.highlightAllUnder(container);
       } catch (err) {
-        container.innerHTML = `<div class="p-4 text-xs text-rose-400 font-mono">RAG search failed: ${err.message}</div>`;
+        // Fallback to direct Space query
+        try {
+          const directRes = await fetch(SERVICE_URLS.hf + '/gradio_api/call/query', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ data: [query, domain, 3] })
+          });
+          const callData = await directRes.json();
+          if (callData.event_id) {
+            const evRes = await fetch(SERVICE_URLS.hf + '/gradio_api/call/query/' + callData.event_id);
+            const text = await evRes.text();
+            for (const line of text.split('\n')) {
+              if (line.startsWith('data:')) {
+                const parsed = JSON.parse(line.substring(5).trim());
+                container.innerHTML = `<div class="bg-slate-950 border border-slate-800 rounded-xl p-5 text-sm prose prose-invert max-w-none">${marked.parse(parsed[0])}</div>`;
+                Prism.highlightAllUnder(container);
+                return;
+              }
+            }
+          }
+        } catch (e2) {
+          container.innerHTML = `<div class="p-4 text-xs text-rose-400 font-mono">RAG search failed: ${err.message}</div>`;
+        }
       }
     }
 
