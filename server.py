@@ -3,6 +3,7 @@ import sys
 import json
 import time
 import requests
+from concurrent.futures import ThreadPoolExecutor
 from typing import Optional, List, Dict, Any
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
@@ -78,10 +79,12 @@ class GitHubReadRequest(BaseModel):
 
 def render_dashboard_html() -> str:
     candidates = [
+        os.path.join(current_dir, "public", "index.html"),
         os.path.join(current_dir, "static", "index.html"),
+        os.path.join(os.getcwd(), "public", "index.html"),
         os.path.join(os.getcwd(), "static", "index.html"),
-        os.path.join("/var/task", "static", "index.html"),
-        os.path.join(os.path.dirname(__file__), "static", "index.html")
+        os.path.join("/var/task", "public", "index.html"),
+        os.path.join("/var/task", "static", "index.html")
     ]
     for p in candidates:
         if os.path.exists(p):
@@ -112,63 +115,70 @@ def get_system_status():
         "services": {}
     }
 
-    # 1. Render MCP Server
-    try:
-        t0 = time.time()
-        mcp_res = requests.get(f"{MCP_SERVER_URL}/health", timeout=4)
-        mcp_latency = int((time.time() - t0) * 1000)
-        status["services"]["mcp_server"] = {
-            "name": "Render GitHub MCP Gateway",
-            "url": MCP_SERVER_URL,
-            "status": "online" if mcp_res.status_code == 200 else "degraded",
-            "latency_ms": mcp_latency,
-            "details": mcp_res.json() if mcp_res.status_code == 200 else {}
-        }
-    except Exception as e:
-        status["services"]["mcp_server"] = {
-            "name": "Render GitHub MCP Gateway",
-            "url": MCP_SERVER_URL,
-            "status": "offline",
-            "error": str(e)
-        }
+    def check_mcp():
+        try:
+            t0 = time.time()
+            res = requests.get(f"{MCP_SERVER_URL}/health", timeout=3)
+            return {
+                "name": "Render GitHub MCP Gateway",
+                "url": MCP_SERVER_URL,
+                "status": "online" if res.status_code == 200 else "degraded",
+                "latency_ms": int((time.time() - t0) * 1000),
+                "details": res.json() if res.status_code == 200 else {}
+            }
+        except Exception as e:
+            return {
+                "name": "Render GitHub MCP Gateway",
+                "url": MCP_SERVER_URL,
+                "status": "offline",
+                "error": str(e)
+            }
 
-    # 2. Hugging Face ZeroGPU Vector Space
-    try:
-        t0 = time.time()
-        hf_res = requests.get(f"{HF_VECTOR_URL}/config", timeout=4)
-        hf_latency = int((time.time() - t0) * 1000)
-        status["services"]["hf_vector_space"] = {
-            "name": "Hugging Face Vector RAG (ZeroGPU A10G)",
-            "url": HF_VECTOR_URL,
-            "status": "online" if hf_res.status_code == 200 else "degraded",
-            "latency_ms": hf_latency
-        }
-    except Exception as e:
-        status["services"]["hf_vector_space"] = {
-            "name": "Hugging Face Vector RAG (ZeroGPU A10G)",
-            "url": HF_VECTOR_URL,
-            "status": "offline",
-            "error": str(e)
-        }
+    def check_hf():
+        try:
+            t0 = time.time()
+            res = requests.get(f"{HF_VECTOR_URL}/config", timeout=3)
+            return {
+                "name": "Hugging Face Vector RAG (ZeroGPU A10G)",
+                "url": HF_VECTOR_URL,
+                "status": "online" if res.status_code == 200 else "degraded",
+                "latency_ms": int((time.time() - t0) * 1000)
+            }
+        except Exception as e:
+            return {
+                "name": "Hugging Face Vector RAG (ZeroGPU A10G)",
+                "url": HF_VECTOR_URL,
+                "status": "offline",
+                "error": str(e)
+            }
 
-    # 3. Hugging Face DNA Knowledge Graph
-    try:
-        t0 = time.time()
-        kg_res = requests.get(f"{HF_URL}/ping", timeout=4)
-        kg_latency = int((time.time() - t0) * 1000)
-        status["services"]["knowledge_graph"] = {
-            "name": "DNA Knowledge Graph",
-            "url": HF_URL,
-            "status": "online" if kg_res.status_code == 200 else "degraded",
-            "latency_ms": kg_latency
-        }
-    except Exception as e:
-        status["services"]["knowledge_graph"] = {
-            "name": "DNA Knowledge Graph",
-            "url": HF_URL,
-            "status": "offline",
-            "error": str(e)
-        }
+    def check_kg():
+        try:
+            t0 = time.time()
+            res = requests.get(f"{HF_URL}/ping", timeout=3)
+            return {
+                "name": "DNA Knowledge Graph",
+                "url": HF_URL,
+                "status": "online" if res.status_code == 200 else "degraded",
+                "latency_ms": int((time.time() - t0) * 1000)
+            }
+        except Exception as e:
+            return {
+                "name": "DNA Knowledge Graph",
+                "url": HF_URL,
+                "status": "offline",
+                "error": str(e)
+            }
+
+    # Execute health checks in parallel
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        f_mcp = executor.submit(check_mcp)
+        f_hf = executor.submit(check_hf)
+        f_kg = executor.submit(check_kg)
+
+        status["services"]["mcp_server"] = f_mcp.result()
+        status["services"]["hf_vector_space"] = f_hf.result()
+        status["services"]["knowledge_graph"] = f_kg.result()
 
     # 4. Forensic Sandbox Engine
     try:
