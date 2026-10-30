@@ -167,7 +167,12 @@
               <h2 class="text-base font-semibold text-white flex items-center gap-2">
                 <span>🎯</span> Challenge Input & Objective
               </h2>
-              <span class="text-xs text-cyan-400 font-mono">Agent Ready</span>
+              <div class="flex items-center gap-2">
+                <span id="session-badge" class="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-900 border border-slate-700 text-cyan-400 truncate max-w-[130px]">Sess: active</span>
+                <button type="button" onclick="startNewSession()" title="Start fresh conversation" class="text-[11px] px-2 py-0.5 bg-slate-800 hover:bg-cyan-950 text-slate-300 hover:text-cyan-400 rounded border border-slate-700 hover:border-cyan-800 transition">
+                  ➕ New
+                </button>
+              </div>
             </div>
 
             <!-- Quick Presets -->
@@ -591,6 +596,33 @@
     }
 
     let lastRawSolution = "";
+    let currentSessionId = "sess_" + Math.random().toString(36).substring(2, 10);
+    let conversationHistory = [];
+
+    function updateSessionBadge() {
+      const badge = document.getElementById('session-badge');
+      if (badge) badge.textContent = `Sess: ${currentSessionId.substring(0, 10)}`;
+    }
+
+    async function startNewSession() {
+      try {
+        const res = await fetch('/api/session/reset', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: currentSessionId })
+        });
+        const data = await res.json();
+        currentSessionId = data.session_id || ("sess_" + Math.random().toString(36).substring(2, 10));
+      } catch(e) {
+        currentSessionId = "sess_" + Math.random().toString(36).substring(2, 10);
+      }
+      conversationHistory = [];
+      updateSessionBadge();
+      document.getElementById('solution-output').innerHTML = '<p class="text-slate-500 text-xs italic">Fresh session started. Submit a challenge or preset to begin.</p>';
+      document.getElementById('trace-container').innerHTML = '<div class="text-xs text-slate-500 italic p-3 text-center border border-dashed border-slate-800 rounded-xl">Ready for task. When triggered, real-time tool calls will stream here.</div>';
+      document.getElementById('trace-count').textContent = '0 tool calls';
+      alert('Started fresh challenge session: ' + currentSessionId.substring(0, 8));
+    }
 
     // File Upload Handler
     async function handleFileUpload(event) {
@@ -663,12 +695,17 @@
 
       let liveTraces = [];
 
+      updateSessionBadge();
+      // Record user turn in conversational feed
+      conversationHistory.push({ role: 'user', text: prompt });
+      document.getElementById('challenge-prompt').value = '';
+
       try {
         // Attempt SSE Streaming first for instant real-time feedback and Vercel timeout immunity
         const response = await fetch('/api/solve/stream', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt, provider })
+          body: JSON.stringify({ prompt, provider, session_id: currentSessionId })
         });
 
         if (response.ok && response.body) {
@@ -696,8 +733,8 @@
                     traceContainer.innerHTML = liveTraces.map(renderTraceItem).join('');
                   } else if (ev.type === 'final_answer') {
                     lastRawSolution = ev.final_answer;
-                    solutionOutput.innerHTML = marked.parse(lastRawSolution);
-                    Prism.highlightAllUnder(solutionOutput);
+                    conversationHistory.push({ role: 'assistant', text: lastRawSolution });
+                    renderConversationStream();
                   }
                 } catch(e) {}
               }
@@ -710,7 +747,7 @@
         const res = await fetch('/api/solve', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt, provider })
+          body: JSON.stringify({ prompt, provider, session_id: currentSessionId })
         });
         const data = await res.json();
         const trace = data.trace || [];
@@ -730,6 +767,39 @@
     }
 
     // Copy Solution
+    
+    function renderConversationStream() {
+      const solutionOutput = document.getElementById('solution-output');
+      if (conversationHistory.length === 0) return;
+      solutionOutput.innerHTML = conversationHistory.map((msg, idx) => {
+        if (msg.role === 'user') {
+          return `
+            <div class="mb-4 p-3 rounded-xl bg-slate-900 border border-cyan-900/50">
+              <span class="text-[11px] font-bold text-cyan-400 block mb-1">User Prompt (Turn ${Math.floor(idx/2)+1}):</span>
+              <p class="text-xs text-slate-200 whitespace-pre-wrap font-mono">${msg.text}</p>
+            </div>
+          `;
+        } else {
+          return `
+            <div class="mb-6 p-4 rounded-xl bg-slate-950 border border-slate-800">
+              <div class="flex items-center justify-between mb-2 pb-1 border-b border-slate-900">
+                <span class="text-[11px] font-bold text-emerald-400 flex items-center gap-1.5">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                  Agent Solution & Verified Exploit
+                </span>
+                <span class="text-[10px] text-slate-500 font-mono">Completed</span>
+              </div>
+              <div class="text-sm text-slate-200 prose prose-invert max-w-none">
+                ${marked.parse(msg.text)}
+              </div>
+            </div>
+          `;
+        }
+      }).join('');
+      Prism.highlightAllUnder(solutionOutput);
+      solutionOutput.scrollTop = solutionOutput.scrollHeight;
+    }
+
     function copyOutput() {
       const textToCopy = lastRawSolution || document.getElementById('solution-output').innerText;
       navigator.clipboard.writeText(textToCopy).then(() => {

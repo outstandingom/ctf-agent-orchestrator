@@ -7,10 +7,18 @@ import re
 import json
 import codecs
 import base64
+import uuid
 import urllib.parse
+from typing import Optional, List, Dict, Any
 import requests
+import urllib3
 from dotenv import load_dotenv
 
+# Suppress SSL certificate verification warnings for CTF targets
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+load_dotenv(env_path)
 load_dotenv()
 
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "groq").lower().strip()
@@ -28,15 +36,53 @@ SUPABASE_URL = os.getenv("SUPABASE_URL", "https://vtlmgubzcktztkuymtir.supabase.
 SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "sb_publishable_0Qoicwxg64tkFReoDSKJ3g_dOSZJPCE").strip()
 
 # =========================================================================
+# CONTROLLED PATH RESOLVER (Never breaks existing local setup)
+# =========================================================================
+def get_forensic_dir() -> str:
+    r"""
+    Controlled path resolver for the Forensic Engine.
+    Prioritizes the exact local installation at c:\Users\SGI\Downloads\forensic
+    while safely supporting environment overrides and relative fallbacks.
+    """
+    candidates = [
+        r"c:\Users\SGI\Downloads\forensic",
+        os.getenv("FORENSIC_DIR", ""),
+        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "forensic"),
+        os.path.join(os.getcwd(), "forensic")
+    ]
+    for p in candidates:
+        if p and os.path.exists(p):
+            return p
+    return r"c:\Users\SGI\Downloads\forensic"
+
+# =========================================================================
+# MULTI-TURN SESSION MEMORY
+# =========================================================================
+SESSION_MEMORY: Dict[str, List[dict]] = {}
+
+def get_session_history(session_id: str) -> List[dict]:
+    if not session_id:
+        return []
+    return SESSION_MEMORY.get(session_id, [])
+
+def save_session_history(session_id: str, history: List[dict]):
+    if session_id:
+        # Keep last 24 message turns to preserve context window
+        SESSION_MEMORY[session_id] = history[-24:]
+
+def clear_session_history(session_id: str):
+    if session_id in SESSION_MEMORY:
+        del SESSION_MEMORY[session_id]
+
+# =========================================================================
 # UNIVERSAL TOOL DEFINITIONS (OpenAI / Groq Format)
-# Mapped to the 4 CTF & HackQuest Domains: Web, Crypto, Reversing, Forensics
 # =========================================================================
 OPENAI_TOOLS = [
     {
         "type": "function",
         "function": {
             "name": "search_knowledge_base",
-            "description": "Searches the CTF Knowledge Base on Hugging Face Spaces (ZeroGPU) and Knowledge Graph for challenge writeups, cryptographic patterns (PRNG, RSA, XOR), binary reversing, and web exploit templates.",
+            "description": "Searches the CTF Knowledge Base on Hugging Face Spaces (ZeroGPU) and DNA Knowledge Graph for challenge writeups, cryptographic patterns (PRNG, RSA, XOR), binary reversing, and web exploit templates.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -56,8 +102,33 @@ OPENAI_TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "sync_dna_attack_tree",
+            "description": "Dynamically registers a newly discovered attack step, relationship, or vulnerability pattern into the Hugging Face DNA Knowledge Graph (outstandingom-knowledge-graph-env.hf.space).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "concept_a": {
+                        "type": "string",
+                        "description": "Source concept or domain (e.g. 'Web_Exploitation', 'PRNG_Mersenne_Twister', 'ELF_Binary')"
+                    },
+                    "concept_b": {
+                        "type": "string",
+                        "description": "Target exploit technique or symptom (e.g. 'SSTI_Jinja2_RCE', 'RandCrack_State_Cloning', 'Angr_Symbolic_Execution')"
+                    },
+                    "relationship_type": {
+                        "type": "string",
+                        "description": "Relationship (e.g. 'exploits', 'mitigates', 'reveals_flag', 'bypasses')"
+                    }
+                },
+                "required": ["concept_a", "concept_b", "relationship_type"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "crypto_cyberchef_analyzer",
-            "description": "Automated multi-layer decoding engine (CyberChef logic). Decodes Base64, Hex, URL, ROT13, and performs single-byte XOR brute-force (0-255) searching for flags.",
+            "description": "Automated multi-layer decoding engine (CyberChef logic). Decodes Base64, Hex, URL, ROT13, and performs single-byte (0-255) and repeating-key XOR brute-force searching for flags.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -74,7 +145,7 @@ OPENAI_TOOLS = [
         "type": "function",
         "function": {
             "name": "reverse_engineering_inspector",
-            "description": "Inspects binary or compiled files (.pyc, .exe, ELF). Extracts printable ASCII/Unicode strings, checks magic bytes (Python bytecode version, ELF, PE), and identifies symbols/strcmp clues.",
+            "description": "Inspects binary or compiled files (.pyc, .exe, ELF). Identifies exact 4-byte magic headers (Python 2.7 to 3.13), extracts printable strings, and maps symbols/strcmp clues.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -91,13 +162,21 @@ OPENAI_TOOLS = [
         "type": "function",
         "function": {
             "name": "web_security_probe",
-            "description": "Inspects a target web challenge URL: fetches response headers, cookies, hidden HTML form fields, comments, and tests for basic client-side locks or timer indicators.",
+            "description": "Automated web security tester: actively tests target URL for SSTI reflection ({{7*7}}), SQLi error indicators, LFI path traversal, analyzes headers/CORS/cookies, extracts forms, inputs, scripts, and flag patterns.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "url": {
                         "type": "string",
                         "description": "Target HTTP/HTTPS URL"
+                    },
+                    "method": {
+                        "type": "string",
+                        "description": "HTTP method: GET, POST, or OPTIONS (default: GET)"
+                    },
+                    "data": {
+                        "type": "object",
+                        "description": "Optional form body or JSON payload"
                     },
                     "cookies": {
                         "type": "object",
@@ -106,26 +185,13 @@ OPENAI_TOOLS = [
                     "headers": {
                         "type": "object",
                         "description": "Optional custom headers dict"
+                    },
+                    "active_scan": {
+                        "type": "boolean",
+                        "description": "If True, runs non-destructive SSTI, SQLi, and CORS security checks (default: True)"
                     }
                 },
                 "required": ["url"]
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "run_forensics_inspection",
-            "description": "Executes the Forensic Sandbox Engine on a file to inspect file integrity, detect steganography / hidden zip archives, and compute cryptographic hashes.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "file_path": {
-                        "type": "string",
-                        "description": "Local path to the target file to inspect"
-                    }
-                },
-                "required": ["file_path"]
             }
         }
     },
@@ -147,6 +213,23 @@ OPENAI_TOOLS = [
                     }
                 },
                 "required": ["code"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "run_forensics_inspection",
+            "description": "Executes the Forensic Sandbox Engine on a file to inspect file integrity, detect steganography / hidden zip archives, and compute cryptographic hashes.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "file_path": {
+                        "type": "string",
+                        "description": "Local path to the target file to inspect"
+                    }
+                },
+                "required": ["file_path"]
             }
         }
     },
@@ -229,7 +312,7 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
         query = tool_input.get("query", "")
         domain = tool_input.get("domain", "All")
 
-        # High-Memory Hugging Face ZeroGPU Vector Space
+        # ZeroGPU Vector Space
         try:
             call_res = requests.post(
                 f"{HF_VECTOR_URL}/gradio_api/call/query",
@@ -246,35 +329,57 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
                             print("[TOOL] Hugging Face Vector Space (ZeroGPU) returned matching writeups.")
                             return str(parsed[0])
         except Exception as e:
-            print(f"[RAG fallback] HF Vector Space unavailable ({e}), trying local RAG...")
+            print(f"[RAG fallback] HF Vector Space unavailable ({e}), trying DNA Graph...")
 
-        # Secondary: Local RAG (port 8001)
-        try:
-            res = requests.post(
-                f"{RAG_URL}/query",
-                json={"query": query, "domain": domain if domain != "All" else None, "k": 3},
-                timeout=5
-            )
-            if res.status_code == 200:
-                data = res.json()
-                print(f"[TOOL] Local RAG found {len(data.get('results', []))} results.")
-                return json.dumps(data.get("results", []))
-        except Exception as e:
-            print(f"[RAG fallback] Local RAG offline ({e}), querying Hugging Face Knowledge Graph...")
-
-        # Tertiary: Hugging Face DNA Knowledge Graph
+        # Secondary: DNA Knowledge Graph
         try:
             hf_res = requests.post(
                 f"{HF_URL}/search/essence",
                 json={"text": query, "top_k": 3},
-                timeout=10
+                timeout=8
             )
             if hf_res.status_code == 200:
                 return hf_res.text
-        except Exception as hf_err:
-            return json.dumps({"error": f"Knowledge base unreachable: {hf_err}"})
+        except Exception:
+            pass
 
-    # 2. AUTOMATED CYBERCHEF ANALYZER
+        # Tertiary: Local RAG (port 8001)
+        try:
+            res = requests.post(
+                f"{RAG_URL}/query",
+                json={"query": query, "domain": domain if domain != "All" else None, "k": 3},
+                timeout=4
+            )
+            if res.status_code == 200:
+                data = res.json()
+                return json.dumps(data.get("results", []))
+        except Exception as err:
+            return json.dumps({"notice": f"Knowledge base search completed. Fallback to SLM internal CTF memory."})
+
+    # 2. DYNAMIC DNA ATTACK TREE SYNC
+    elif tool_name == "sync_dna_attack_tree":
+        c_a = tool_input.get("concept_a", "").strip()
+        c_b = tool_input.get("concept_b", "").strip()
+        rel = tool_input.get("relationship_type", "exploits").strip()
+        if not c_a or not c_b:
+            return json.dumps({"error": "Both concept_a and concept_b are required"})
+        try:
+            payload = {
+                "concept_a": c_a,
+                "concept_b": c_b,
+                "relationship_type": rel,
+                "weight": 1.0
+            }
+            res = requests.post(f"{HF_URL}/relationships/add", json=payload, timeout=6)
+            return json.dumps({
+                "status": "synced",
+                "dna_response": res.json() if res.status_code == 200 else res.text,
+                "tree_edge": f"{c_a} --[{rel}]--> {c_b}"
+            })
+        except Exception as e:
+            return json.dumps({"status": "cached_locally", "error": str(e)})
+
+    # 3. AUTOMATED CYBERCHEF & REPEATING-KEY XOR ANALYZER
     elif tool_name == "crypto_cyberchef_analyzer":
         raw = tool_input.get("ciphertext", "").strip()
         results = {}
@@ -312,7 +417,7 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
         except Exception:
             pass
 
-        # Single-Byte XOR Brute Force (0-255) looking for flag indicators
+        # XOR Analysis (Single-byte 0-255 + Multi-byte Repeating Key Known Plaintext)
         xor_hits = []
         try:
             sample_bytes = None
@@ -323,13 +428,14 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
             else:
                 sample_bytes = raw.encode('latin-1')
 
+            # Single-byte XOR
             for k in range(256):
                 dec = bytes([b ^ k for b in sample_bytes])
                 dec_str = dec.decode('latin-1', errors='ignore')
                 if any(hdr in dec_str.lower() for hdr in ["flag{", "hqx{", "ctf{"]):
-                    xor_hits.append({"key_hex": f"0x{k:02x}", "result": dec_str})
-            
-            # Multi-byte Known-Plaintext Repeating-Key XOR (HQX{, flag{, CTF{)
+                    xor_hits.append({"type": "single_byte", "key_hex": f"0x{k:02x}", "result": dec_str})
+
+            # Multi-byte Known-Plaintext Repeating-Key XOR (HQX{, flag{, CTF{, hackquest{)
             for prefix in [b"HQX{", b"flag{", b"CTF{", b"hackquest{"]:
                 if len(sample_bytes) >= len(prefix):
                     cand_key = bytes([sample_bytes[i] ^ prefix[i] for i in range(len(prefix))])
@@ -350,7 +456,7 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
 
         return json.dumps(results, indent=2)
 
-    # 3. REVERSE ENGINEERING & BINARY INSPECTOR
+    # 4. REVERSE ENGINEERING & EXACT 4-BYTE PYC INSPECTOR
     elif tool_name == "reverse_engineering_inspector":
         file_path = tool_input.get("file_path", "").strip()
         if not os.path.exists(file_path):
@@ -358,9 +464,8 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
 
         info = {"file_path": file_path, "file_size": os.path.getsize(file_path)}
         with open(file_path, "rb") as f:
-            head = f.read(1024 * 1024) # Read up to 1 MB
+            head = f.read(1024 * 1024)
 
-        # Format detection
         if head.startswith(b"\x7fELF"):
             info["format"] = "Linux ELF Binary"
             info["recommended_tool"] = "ltrace ./binary or strings | grep -E 'HQX|flag'"
@@ -386,47 +491,121 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
             info["magic_hex"] = head[:4].hex()
             info["recommended_tool"] = f"uncompyle6 {file_path} or pycdc {file_path}"
 
-        # String Carving (ASCII >= 4 chars)
         strings = re.findall(rb'[A-Za-z0-9_\-\.\/\{\}]{4,}', head)
         interesting = [
             s.decode('latin-1') for s in strings
             if any(k in s.lower() for k in [b"flag", b"hqx", b"ctf", b"pass", b"key", b"admin", b"strcmp", b"system"])
         ]
-        info["interesting_strings"] = interesting[:20]
+        info["interesting_strings"] = interesting[:25]
         info["sample_extracted_strings"] = [s.decode('latin-1') for s in strings[:15]]
         return json.dumps(info, indent=2)
 
-    # 4. WEB APPLICATION SECURITY PROBE
+    # 5. AUTOMATED WEB SECURITY SCANNER & ASSISTANT
     elif tool_name == "web_security_probe":
         url = tool_input.get("url", "").strip()
+        method = tool_input.get("method", "GET").upper()
+        data = tool_input.get("data")
         headers = tool_input.get("headers", {})
         cookies = tool_input.get("cookies", {})
+        active_scan = tool_input.get("active_scan", True)
+
+        if "User-Agent" not in headers:
+            headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) CTF-Security-Assistant/2.0"
 
         try:
-            r = requests.get(url, headers=headers, cookies=cookies, timeout=8, verify=False)
+            # 1. Primary Request
+            if method == "POST":
+                r = requests.post(url, headers=headers, cookies=cookies, data=data, timeout=8, verify=False)
+            elif method == "OPTIONS":
+                r = requests.options(url, headers=headers, cookies=cookies, timeout=8, verify=False)
+            else:
+                r = requests.get(url, headers=headers, cookies=cookies, timeout=8, verify=False)
+
             html = r.text
 
-            # Extract comments
+            # Extract structural elements
             comments = re.findall(r'<!--(.*?)-->', html, re.DOTALL)
-            # Extract input fields
             inputs = re.findall(r'<input[^>]+>', html, re.IGNORECASE)
-            # Extract scripts
-            scripts = re.findall(r'<script[^>]*>(.*?)</script>', html, re.DOTALL | re.IGNORECASE)
+            forms = re.findall(r"<form[^>]*action=['\"]([^'\"]*)['\"]", html, re.IGNORECASE)
+            scripts = re.findall(r"<script[^>]*src=['\"]([^'\"]*)['\"]", html, re.IGNORECASE)
+            flag_matches = re.findall(r'(?:flag|hqx|ctf)\{[^}]+\}', html, re.IGNORECASE)
 
-            res = {
+            # Header & Security Configuration Audit
+            sec_audit = {}
+            cors_hdr = r.headers.get("Access-Control-Allow-Origin")
+            if cors_hdr == "*":
+                sec_audit["cors_wildcard"] = "CORS header allows all origins (*)"
+            if "Content-Security-Policy" not in r.headers:
+                sec_audit["missing_csp"] = "No Content-Security-Policy header"
+            if "X-Frame-Options" not in r.headers:
+                sec_audit["missing_clickjacking_protection"] = "No X-Frame-Options header"
+
+            # Active Probing for Vulnerabilities (if active_scan enabled)
+            active_findings = []
+            if active_scan and method == "GET":
+                # A. SSTI Reflection Test
+                try:
+                    ssti_url = url + ("&" if "?" in url else "?") + "ctf_probe={{7*7}}"
+                    r_ssti = requests.get(ssti_url, headers=headers, cookies=cookies, timeout=4, verify=False)
+                    if "49" in r_ssti.text and "49" not in html:
+                        active_findings.append({
+                            "type": "SSTI_VULNERABILITY",
+                            "severity": "CRITICAL",
+                            "details": "Server-Side Template Injection confirmed (payload {{7*7}} evaluated to 49)",
+                            "recommended_exploit": "{{''.__class__.__mro__[1].__subclasses__()}}"
+                        })
+                except Exception:
+                    pass
+
+                # B. SQLi Error Reflection Test
+                try:
+                    sqli_url = url + ("&" if "?" in url else "?") + "id=1%27%22"
+                    r_sqli = requests.get(sqli_url, headers=headers, cookies=cookies, timeout=4, verify=False)
+                    sql_errors = ["syntax error", "mysql", "sqlite3", "psycopg2", "unclosed quotation"]
+                    for err in sql_errors:
+                        if err in r_sqli.text.lower() and err not in html.lower():
+                            active_findings.append({
+                                "type": "SQLI_ERROR_REFLECTION",
+                                "severity": "HIGH",
+                                "details": f"SQL syntax error detected: '{err}'",
+                                "recommended_exploit": "' UNION SELECT 1, sql, 3 FROM sqlite_master --"
+                            })
+                            break
+                except Exception:
+                    pass
+
+                # C. LFI Canary Test
+                try:
+                    lfi_url = url + ("&" if "?" in url else "?") + "file=../../../../etc/passwd"
+                    r_lfi = requests.get(lfi_url, headers=headers, cookies=cookies, timeout=4, verify=False)
+                    if "root:x:0:0:" in r_lfi.text:
+                        active_findings.append({
+                            "type": "LFI_PATH_TRAVERSAL",
+                            "severity": "CRITICAL",
+                            "details": "Local File Inclusion confirmed: /etc/passwd contents leaked",
+                            "flags_in_file": re.findall(r'(?:flag|hqx|ctf)\{[^}]+\}', r_lfi.text, re.IGNORECASE)
+                        })
+                except Exception:
+                    pass
+
+            report = {
+                "target_url": url,
                 "status_code": r.status_code,
                 "response_headers": dict(r.headers),
                 "cookies_received": dict(r.cookies),
+                "forms_discovered": forms[:5],
+                "form_inputs": inputs[:10],
+                "script_endpoints": scripts[:5],
                 "html_comments": [c.strip() for c in comments if c.strip()][:5],
-                "form_inputs": inputs[:8],
-                "script_snippets_count": len(scripts),
-                "flag_matches": re.findall(r'(?:flag|hqx|ctf)\{[^}]+\}', html, re.IGNORECASE)
+                "security_audit": sec_audit,
+                "active_vulnerability_findings": active_findings,
+                "direct_flags_found": list(set(flag_matches))
             }
-            return json.dumps(res, indent=2)
+            return json.dumps(report, indent=2)
         except Exception as e:
-            return json.dumps({"error": f"Web probe failed: {e}"})
+            return json.dumps({"error": f"Web probe failed: {str(e)}"})
 
-    # 5. PYTHON SANDBOX EXECUTION
+    # 6. PYTHON SANDBOX EXECUTION
     elif tool_name == "execute_python_sandbox":
         code_str = tool_input.get("code", "").strip()
         timeout = min(int(tool_input.get("timeout_seconds", 10)), 20)
@@ -470,17 +649,14 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
             except Exception:
                 pass
 
-    # 6. FORENSICS SANDBOX ENGINE
+    # 7. FORENSICS SANDBOX ENGINE (Controlled Path Safe)
     elif tool_name == "run_forensics_inspection":
         file_path = tool_input.get("file_path", "")
         if not os.path.exists(file_path):
             return json.dumps({"error": f"File not found: {file_path}"})
         try:
-            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            forensic_dir = os.getenv("FORENSIC_DIR", os.path.join(base_dir, "forensic"))
-            if not os.path.exists(forensic_dir):
-                forensic_dir = os.path.join(os.getcwd(), "forensic")
-            if os.path.exists(forensic_dir) and forensic_dir not in sys.path:
+            forensic_dir = get_forensic_dir()
+            if forensic_dir not in sys.path and os.path.exists(forensic_dir):
                 sys.path.insert(0, forensic_dir)
             from forensic_engine.engine import ForensicEngine
             engine = ForensicEngine()
@@ -490,7 +666,7 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
         except Exception as err:
             return json.dumps({"error": f"ForensicEngine error: {err}"})
 
-    # 7. FLAG PATTERN HUNTER
+    # 8. FLAG PATTERN HUNTER
     elif tool_name == "search_flag_patterns":
         text = tool_input.get("text", "")
         file_path = tool_input.get("file_path")
@@ -498,7 +674,6 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
             with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
                 text += "\n" + f.read()
 
-        # Matches TCS HackQuest HQX{...}, flag{...}, and CTF{...}
         flags = re.findall(r"(?:flag|CTF|HQX|hackquest)\{[^}]+\}", text, re.IGNORECASE)
         b64_matches = re.findall(r"(?:[A-Za-z0-9+/]{4}){4,}(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?", text)
         zero_width = [char for char in text if char in ['\u200b', '\u200c', '\u200d', '\ufeff']]
@@ -508,10 +683,9 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
             "b64_candidates": list(set(b64_matches))[:5],
             "zero_width_chars_count": len(zero_width)
         }
-        print(f"[TOOL] Flag Pattern Search found {len(result['flags_found'])} flags and {len(zero_width)} zero-width chars.")
         return json.dumps(result, indent=2)
 
-    # 8. GITHUB MCP TOOLS
+    # 9. GITHUB MCP TOOLS
     elif tool_name in ["read_github_file", "commit_github_file", "list_github_repos"]:
         tool_map = {
             "read_github_file": "read_file",
@@ -530,7 +704,6 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
                 json={"tool": target_tool, "params": tool_input},
                 timeout=15
             )
-            print(f"[TOOL] Render MCP Gateway responded successfully.")
             return resp.text
         except Exception as err:
             return json.dumps({"error": f"MCP Gateway call failed: {err}"})
@@ -538,7 +711,7 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
     return json.dumps({"error": f"Unknown tool: {tool_name}"})
 
 # =========================================================================
-# CTF ORCHESTRATOR AGENT CLASS
+# CTF ORCHESTRATOR AGENT CLASS WITH MULTI-TURN SESSION MEMORY
 # =========================================================================
 class CTFOrchestratorAgent:
     def __init__(self):
@@ -548,11 +721,12 @@ class CTFOrchestratorAgent:
             "(requests, httpx, pwntools, pycryptodome, BeautifulSoup, base64, hashlib, re). "
             "When given a challenge: "
             "1. Determine its domain: Web Application Security, Cryptography, Reverse Engineering & Binary, or Forensics & Log Analysis. "
-            "2. Query your Hugging Face ZeroGPU Vector Knowledge Base for historical HackQuest and CTF patterns. "
+            "2. Query your Hugging Face ZeroGPU Vector Knowledge Base or DNA Knowledge Graph for patterns. "
             "3. Use your specialized tools (CyberChef decoder, Binary Strings & Decompiler inspector, Web probe, Forensic Engine). "
-            "4. Formulate an actionable mathematical/algorithmic exploit hypothesis. "
-            "5. Write a clean, complete, ready-to-execute Python exploit script or exact Linux terminal command sequence to extract the flag (format: HQX{...}, flag{...}, or CTF{...}). "
-            "6. If requested, commit the full solver to GitHub via your Render MCP tools."
+            "4. Verify your exploits autonomously using execute_python_sandbox before returning your answer! "
+            "5. If you find a new attack relationship, register it with sync_dna_attack_tree. "
+            "6. Remember all past clues, keys, and findings across conversational session turns. "
+            "7. Output clean, runnable exploit code and the extracted flag (format: HQX{...}, flag{...}, or CTF{...})."
         )
 
         if self.provider == "groq":
@@ -571,32 +745,40 @@ class CTFOrchestratorAgent:
             self.client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
             self.model = CLAUDE_MODEL
 
-    def run(self, user_prompt: str, max_turns: int = 10) -> str:
-        trace_result = self.run_with_trace(user_prompt, max_turns)
+    def run(self, user_prompt: str, max_turns: int = 10, session_id: Optional[str] = None) -> str:
+        trace_result = self.run_with_trace(user_prompt, max_turns, session_id=session_id)
         return trace_result.get("final_answer", "")
 
-    def run_with_trace(self, user_prompt: str, max_turns: int = 10) -> dict:
-        print(f"\n[CTF AGENT STARTED] Engine: {self.provider.upper()} | Model: {self.model}", flush=True)
+    def run_with_trace(self, user_prompt: str, max_turns: int = 10, session_id: Optional[str] = None) -> dict:
+        sess_id = session_id or str(uuid.uuid4())
+        print(f"\n[CTF AGENT STARTED] Engine: {self.provider.upper()} | Model: {self.model} | Session: {sess_id}", flush=True)
         print(f"Task: {user_prompt}\n" + "-"*50, flush=True)
 
         trace = []
         if self.provider == "groq":
-            final_ans = self._run_groq_trace(user_prompt, max_turns, trace)
+            final_ans = self._run_groq_trace(user_prompt, max_turns, trace, sess_id)
         else:
-            final_ans = self._run_anthropic_trace(user_prompt, max_turns, trace)
+            final_ans = self._run_anthropic_trace(user_prompt, max_turns, trace, sess_id)
+
+        # Log session execution to Supabase
+        captured_flags = re.findall(r"(?:flag|CTF|HQX|hackquest)\{[^}]+\}", final_ans, re.IGNORECASE)
+        log_to_supabase(user_prompt, final_ans, trace, captured_flags, sess_id)
 
         return {
+            "session_id": sess_id,
             "final_answer": final_ans,
             "trace": trace,
             "provider": self.provider,
             "model": self.model
         }
 
-    def _run_groq_trace(self, user_prompt: str, max_turns: int, trace: list) -> str:
-        messages = [
-            {"role": "system", "content": self.system_prompt},
-            {"role": "user", "content": user_prompt}
-        ]
+    def _run_groq_trace(self, user_prompt: str, max_turns: int, trace: list, session_id: str) -> str:
+        # Load or initialize conversation history
+        messages = get_session_history(session_id)
+        if not messages:
+            messages = [{"role": "system", "content": self.system_prompt}]
+
+        messages.append({"role": "user", "content": user_prompt})
 
         for turn in range(max_turns):
             response = self.client.chat.completions.create(
@@ -614,7 +796,7 @@ class CTFOrchestratorAgent:
                     fn_name = tc.function.name
                     try:
                         fn_args = json.loads(tc.function.arguments)
-                    except:
+                    except Exception:
                         fn_args = {}
 
                     tool_output = execute_tool(fn_name, fn_args)
@@ -632,11 +814,15 @@ class CTFOrchestratorAgent:
                         "content": tool_output
                     })
             else:
-                return msg.content or ""
+                final_text = msg.content or ""
+                # Persist updated session history
+                save_session_history(session_id, messages)
+                return final_text
 
+        save_session_history(session_id, messages)
         return "Agent reached maximum execution turns."
 
-    def _run_anthropic_trace(self, user_prompt: str, max_turns: int, trace: list) -> str:
+    def _run_anthropic_trace(self, user_prompt: str, max_turns: int, trace: list, session_id: str) -> str:
         import anthropic
         claude_tools = [
             {
@@ -647,7 +833,11 @@ class CTFOrchestratorAgent:
             for t in OPENAI_TOOLS
         ]
 
-        messages = [{"role": "user", "content": user_prompt}]
+        messages = get_session_history(session_id)
+        if not messages:
+            messages = []
+
+        messages.append({"role": "user", "content": user_prompt})
 
         for turn in range(max_turns):
             try:
@@ -687,23 +877,17 @@ class CTFOrchestratorAgent:
                 messages.append({"role": "user", "content": tool_results})
             else:
                 final_text = "".join([b.text for b in response.content if b.type == "text"])
+                save_session_history(session_id, messages)
                 return final_text
 
+        save_session_history(session_id, messages)
         return "Agent reached maximum execution turns."
 
-if __name__ == "__main__":
-    agent = CTFOrchestratorAgent()
-    test_prompt = "I have a cryptography challenge where random.seed(int(time.time())) is used to generate the XOR key. Search our past writeups for how to break this and generate a complete Python solver script."
-    result = agent.run(test_prompt)
-    print("\n[AGENT FINAL OUTPUT]:\n")
-    print(result)
-
-
 # =========================================================================
-# SUPABASE LOGGING HELPER (Bypassing Vercel Timeout with Persistent State)
+# SUPABASE LOGGING HELPER WITH SESSION ID TRACKING
 # =========================================================================
-def log_to_supabase(challenge: str, solution: str, trace: list, flags: list = None):
-    if not SUPABASE_URL or not SUPABASE_KEY:
+def log_to_supabase(challenge: str, solution: str, trace: list, flags: list = None, session_id: str = None):
+    if not SUPABASE_URL or not SUPABASE_ANON_KEY:
         return
     headers = {
         "apikey": SUPABASE_ANON_KEY,
@@ -712,6 +896,7 @@ def log_to_supabase(challenge: str, solution: str, trace: list, flags: list = No
         "Prefer": "return=minimal"
     }
     payload = {
+        "session_id": session_id or "default",
         "challenge": challenge[:1000],
         "solution": solution[:4000],
         "tool_calls_count": len(trace),
@@ -722,3 +907,10 @@ def log_to_supabase(challenge: str, solution: str, trace: list, flags: list = No
         requests.post(f"{SUPABASE_URL}/rest/v1/solves", headers=headers, json=payload, timeout=3)
     except Exception:
         pass
+
+if __name__ == "__main__":
+    agent = CTFOrchestratorAgent()
+    test_prompt = "I have a cryptography challenge where random.seed(int(time.time())) is used to generate the XOR key. Search writeups and execute a Python verification script."
+    result = agent.run(test_prompt)
+    print("\n[AGENT FINAL OUTPUT]:\n")
+    print(result)

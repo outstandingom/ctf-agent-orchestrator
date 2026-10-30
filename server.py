@@ -20,6 +20,9 @@ if current_dir not in sys.path:
 from agent import (
     CTFOrchestratorAgent,
     execute_tool,
+    get_forensic_dir,
+    clear_session_history,
+    get_session_history,
     HF_VECTOR_URL,
     HF_URL,
     MCP_SERVER_URL,
@@ -56,6 +59,7 @@ class SolveRequest(BaseModel):
     prompt: str = Field(..., description="CTF challenge description or problem prompt")
     provider: Optional[str] = Field("groq", description="LLM provider: groq or anthropic")
     model: Optional[str] = Field(None, description="Model override")
+    session_id: Optional[str] = Field(None, description="Session ID for continuous multi-turn memory")
 
 class RAGSearchRequest(BaseModel):
     query: str = Field(..., description="Keywords or problem text to search")
@@ -180,12 +184,9 @@ def get_system_status():
         status["services"]["hf_vector_space"] = f_hf.result()
         status["services"]["knowledge_graph"] = f_kg.result()
 
-    # 4. Forensic Sandbox Engine
+    # 4. Forensic Sandbox Engine (Controlled Path Safe)
     try:
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        forensic_dir = os.getenv("FORENSIC_DIR", os.path.join(base_dir, "forensic"))
-        if not os.path.exists(forensic_dir):
-            forensic_dir = os.path.join(os.getcwd(), "forensic")
+        forensic_dir = get_forensic_dir()
         if os.path.exists(forensic_dir) and forensic_dir not in sys.path:
             sys.path.insert(0, forensic_dir)
         from forensic_engine.engine import ForensicEngine
@@ -236,7 +237,7 @@ def solve_challenge_stream(req: SolveRequest):
                 agent.model = req.model
 
         t0 = time.time()
-        result = agent.run_with_trace(req.prompt)
+        result = agent.run_with_trace(req.prompt, session_id=req.session_id)
         elapsed = round(time.time() - t0, 2)
         result["elapsed_seconds"] = elapsed
 
@@ -247,6 +248,17 @@ def solve_challenge_stream(req: SolveRequest):
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+@app.post("/api/session/reset")
+@app.post("/session/reset")
+def reset_session_endpoint(payload: Optional[Dict[str, str]] = None):
+    import uuid
+    sess = (payload or {}).get("session_id")
+    if sess:
+        clear_session_history(sess)
+    new_sess = str(uuid.uuid4())
+    return {"status": "success", "session_id": new_sess, "message": "New conversation session initialized."}
 
 @app.post("/api/solve")
 @app.post("/solve")
@@ -261,7 +273,7 @@ def solve_challenge(req: SolveRequest):
             agent.model = req.model
 
     t0 = time.time()
-    result = agent.run_with_trace(req.prompt)
+    result = agent.run_with_trace(req.prompt, session_id=req.session_id)
     elapsed = round(time.time() - t0, 2)
     result["elapsed_seconds"] = elapsed
     return result
