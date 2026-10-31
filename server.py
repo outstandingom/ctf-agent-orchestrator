@@ -102,6 +102,22 @@ class ParallelRunRequest(BaseModel):
     scripts: List[str] = Field(..., description="List of Python scripts to run concurrently")
     timeout_seconds: Optional[int] = Field(12, description="Per-script timeout in seconds")
 
+class FuzzRequest(BaseModel):
+    target_url: str = Field(..., description="Target URL")
+    category: Optional[str] = Field("SQLi", description="Attack category: SQLi, SSTI, CommandInjection, PathTraversal, AuthBypass, IDOR")
+    method: Optional[str] = Field("GET", description="HTTP method: GET or POST")
+    param_name: Optional[str] = Field(None, description="Target parameter name")
+    data: Optional[Dict[str, Any]] = Field(None, description="Optional POST body / payload data")
+
+class SymbolicRequest(BaseModel):
+    constraints: str = Field(..., description="Z3 / Python equations or constraint code")
+    target_var: Optional[str] = Field("flag", description="Target variable name to solve for")
+    length: Optional[int] = Field(None, description="Length in bytes if solving for byte array")
+
+class WSLRequest(BaseModel):
+    command: str = Field(..., description="Linux bash command to execute in WSL")
+    timeout_seconds: Optional[int] = Field(15, description="Execution timeout in seconds")
+
 def render_dashboard_html() -> str:
     candidates = [
         os.path.join(current_dir, "public", "index.html"),
@@ -414,6 +430,46 @@ def run_parallel_endpoint(req: ParallelRunRequest):
     raw = execute_tool("parallel_exploit_worker", {
         "scripts": req.scripts,
         "timeout_seconds": req.timeout_seconds
+    })
+    try:
+        return json.loads(raw)
+    except Exception:
+        return {"response": raw}
+
+@app.post("/api/fuzz/scan")
+@app.post("/fuzz/scan")
+def run_fuzzer_endpoint(req: FuzzRequest):
+    raw = execute_tool("web_dynamic_fuzzer", {
+        "target_url": req.target_url,
+        "category": req.category or "SQLi",
+        "method": req.method or "GET",
+        "param_name": req.param_name,
+        "data": req.data
+    })
+    try:
+        return json.loads(raw)
+    except Exception:
+        return {"response": raw}
+
+@app.post("/api/symbolic/solve")
+@app.post("/symbolic/solve")
+def run_symbolic_endpoint(req: SymbolicRequest):
+    raw = execute_tool("symbolic_execution_solver", {
+        "constraints": req.constraints,
+        "target_var": req.target_var or "flag",
+        "length": req.length
+    })
+    try:
+        return json.loads(raw)
+    except Exception:
+        return {"response": raw}
+
+@app.post("/api/wsl/exec")
+@app.post("/wsl/exec")
+def run_wsl_endpoint(req: WSLRequest):
+    raw = execute_tool("wsl_linux_bridge", {
+        "command": req.command,
+        "timeout_seconds": req.timeout_seconds or 15
     })
     try:
         return json.loads(raw)
