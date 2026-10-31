@@ -1180,17 +1180,41 @@
       container.innerHTML = '<div class="col-span-full text-center text-xs text-cyan-400 animate-pulse py-8">Fetching repositories from Render MCP Gateway...</div>';
 
       try {
-        const res = await fetch('/api/github/repos');
-        const data = await res.json();
+        let data = null;
+        try {
+          const res = await fetch('/api/github/repos');
+          if (res.ok) {
+            const ct = res.headers.get('content-type') || '';
+            if (ct.includes('application/json')) {
+              data = await res.json();
+            }
+          }
+        } catch (e) {}
+
+        if (!data || !data.content) {
+          const res = await fetch('https://mcp-server-2sl7.onrender.com/api/test-tool', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer outstandingom_mcp_2026hjfbechjbdhjjfbnkqjkj'
+            },
+            body: JSON.stringify({ tool: 'list_repositories', params: {} })
+          });
+          if (res.ok) {
+            data = await res.json();
+          }
+        }
 
         let repos = [];
-        if (Array.isArray(data)) {
-          repos = data;
-        } else if (data.content && Array.isArray(data.content)) {
-          try {
-            repos = JSON.parse(data.content[0].text);
-          } catch(e) {
-            repos = [];
+        if (data) {
+          if (Array.isArray(data)) {
+            repos = data;
+          } else if (data.content && Array.isArray(data.content)) {
+            try {
+              repos = JSON.parse(data.content[0].text);
+            } catch(e) {
+              repos = [];
+            }
           }
         }
 
@@ -1244,6 +1268,23 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'list_challenges', ctfd_url: url, token: token })
         });
+        
+        const ct = res.headers.get('content-type') || '';
+        if (!ct.includes('application/json')) {
+          statusEl.textContent = 'Backend Offline';
+          container.innerHTML = `
+            <div class="text-center text-xs text-amber-400 py-6 space-y-2">
+              <div class="font-bold">⚠️ Local Agent Server Required</div>
+              <p class="text-slate-400 max-w-md mx-auto">Vercel hosts the dashboard frontend statically. CTFd Autopilot, interactive Netcat, and Python sandboxes execute via your local server.</p>
+              <div class="pt-1">
+                <a href="http://localhost:8080" target="_blank" class="px-3 py-1.5 bg-cyan-950 text-cyan-300 border border-cyan-800 rounded-lg font-mono hover:bg-cyan-900 transition inline-block">
+                  Launch http://localhost:8080 ↗
+                </a>
+              </div>
+            </div>`;
+          return;
+        }
+
         const data = await res.json();
 
         if (data.status === 'success' && data.challenges) {
@@ -1277,11 +1318,12 @@
           `).join('');
         } else {
           statusEl.textContent = 'Error';
-          container.innerHTML = `<div class="text-center text-xs text-rose-400 py-8">Failed to fetch: ${data.message || data.response || 'Unauthorized'}</div>`;
+          const errMsg = data.message || data.error || data.response || 'Platform returned an error';
+          container.innerHTML = `<div class="text-center text-xs text-rose-400 py-8 space-y-1"><div>${errMsg}</div>${data.preview ? `<div class="text-[10px] text-slate-500 font-mono overflow-hidden max-h-16">${data.preview}</div>` : ''}</div>`;
         }
       } catch (err) {
         statusEl.textContent = 'Failed';
-        container.innerHTML = `<div class="text-center text-xs text-rose-400 py-8">Network error: ${err.message}</div>`;
+        container.innerHTML = `<div class="text-center text-xs text-rose-400 py-8">Request failed: ${err.message}. If running from Vercel, open <a href="http://localhost:8080" class="underline text-cyan-400">http://localhost:8080</a>.</div>`;
       }
     }
 
