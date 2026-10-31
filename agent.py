@@ -298,6 +298,69 @@ OPENAI_TOOLS = [
                 }
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "ctfd_manage",
+            "description": "Interacts with any standard CTFd competition platform (list challenges, get details, download attachments, submit flags, read scoreboard).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["list_challenges", "get_challenge", "submit_flag", "get_scoreboard"],
+                        "description": "Action to perform on the CTFd platform"
+                    },
+                    "ctfd_url": {
+                        "type": "string",
+                        "description": "Base URL of the CTFd platform (e.g. 'https://demo.ctfd.io')"
+                    },
+                    "token": {
+                        "type": "string",
+                        "description": "CTFd API user token (e.g. ctfd_...) or session cookie ('session=...')"
+                    },
+                    "challenge_id": {
+                        "type": "integer",
+                        "description": "Challenge ID for get_challenge or submit_flag"
+                    },
+                    "flag": {
+                        "type": "string",
+                        "description": "Flag string to submit (e.g. 'HQX{...}' or 'CTF{...}')"
+                    }
+                },
+                "required": ["action", "ctfd_url"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "interactive_socket_probe",
+            "description": "Connects to a remote TCP / Netcat challenge service (nc host port), reads banner, sends payloads (text or hex), and captures flags from stdout.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "host": {
+                        "type": "string",
+                        "description": "Target hostname or IP (e.g. 'challenge.hackquest.com')"
+                    },
+                    "port": {
+                        "type": "integer",
+                        "description": "Target port (e.g. 1337 or 9000)"
+                    },
+                    "payload": {
+                        "type": "string",
+                        "description": "Optional payload to send. Use 'hex:deadbeef' for raw hex, or regular text."
+                    },
+                    "timeout_seconds": {
+                        "type": "number",
+                        "description": "Connection and read timeout in seconds (default: 5.0)"
+                    }
+                },
+                "required": ["host", "port"]
+            }
+        }
     }
 ]
 
@@ -708,6 +771,130 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
         except Exception as err:
             return json.dumps({"error": f"MCP Gateway call failed: {err}"})
 
+    # 10. CTFD PLATFORM MANAGER (Autonomous Challenge Fetching & Flag Submission)
+    elif tool_name == "ctfd_manage":
+        action = tool_input.get("action", "list_challenges")
+        ctfd_url = tool_input.get("ctfd_url", "").rstrip("/")
+        token = tool_input.get("token", "").strip()
+        challenge_id = tool_input.get("challenge_id")
+        flag = tool_input.get("flag", "").strip()
+
+        if not ctfd_url:
+            return json.dumps({"error": "ctfd_url is required"})
+
+        headers = {"Content-Type": "application/json"}
+        if token:
+            if token.startswith("session="):
+                headers["Cookie"] = token
+            else:
+                headers["Authorization"] = f"Token {token}"
+
+        session = requests.Session()
+        session.headers.update(headers)
+
+        try:
+            if action == "list_challenges":
+                r = session.get(f"{ctfd_url}/api/v1/challenges", timeout=10)
+                if r.status_code == 200:
+                    data = r.json().get("data", [])
+                    simplified = [
+                        {
+                            "id": c.get("id"),
+                            "name": c.get("name"),
+                            "category": c.get("category"),
+                            "value": c.get("value"),
+                            "solved_by_me": c.get("solved_by_me", False)
+                        }
+                        for c in data
+                    ]
+                    return json.dumps({"status": "success", "count": len(simplified), "challenges": simplified}, indent=2)
+                return json.dumps({"status": "error", "code": r.status_code, "response": r.text})
+
+            elif action == "get_challenge":
+                if not challenge_id:
+                    return json.dumps({"error": "challenge_id is required for get_challenge"})
+                r = session.get(f"{ctfd_url}/api/v1/challenges/{challenge_id}", timeout=10)
+                if r.status_code == 200:
+                    data = r.json().get("data", {})
+                    return json.dumps({"status": "success", "challenge": data}, indent=2)
+                return json.dumps({"status": "error", "code": r.status_code, "response": r.text})
+
+            elif action == "submit_flag":
+                if not challenge_id or not flag:
+                    return json.dumps({"error": "challenge_id and flag are required for submit_flag"})
+                payload = {"challenge_id": int(challenge_id), "submission": flag}
+                r = session.post(f"{ctfd_url}/api/v1/challenges/attempt", json=payload, timeout=10)
+                if r.status_code == 200:
+                    res_data = r.json()
+                    status_flag = res_data.get("data", {}).get("status", "unknown")
+                    msg = res_data.get("data", {}).get("message", "")
+                    return json.dumps({"status": "submitted", "result": status_flag, "message": msg, "flag": flag}, indent=2)
+                return json.dumps({"status": "error", "code": r.status_code, "response": r.text})
+
+            elif action == "get_scoreboard":
+                r = session.get(f"{ctfd_url}/api/v1/scoreboard", timeout=10)
+                if r.status_code == 200:
+                    data = r.json().get("data", [])[:10]
+                    return json.dumps({"status": "success", "top_10": data}, indent=2)
+                return json.dumps({"status": "error", "code": r.status_code, "response": r.text})
+
+            else:
+                return json.dumps({"error": f"Unknown action: {action}"})
+        except Exception as e:
+            return json.dumps({"error": f"CTFd request failed: {str(e)}"})
+
+    # 11. INTERACTIVE TCP / NETCAT SOCKET CLIENT
+    elif tool_name == "interactive_socket_probe":
+        host = tool_input.get("host", "").strip()
+        port = int(tool_input.get("port", 0))
+        payload = tool_input.get("payload", "")
+        timeout = float(tool_input.get("timeout_seconds", 5.0))
+
+        if not host or not port:
+            return json.dumps({"error": "host and port are required"})
+
+        import socket
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.settimeout(timeout)
+            s.connect((host, port))
+
+            banner = ""
+            try:
+                banner_raw = s.recv(4096)
+                banner = banner_raw.decode("latin-1", errors="ignore")
+            except Exception:
+                pass
+
+            response = ""
+            if payload:
+                if payload.startswith("hex:"):
+                    send_bytes = bytes.fromhex(payload[4:])
+                else:
+                    send_bytes = (payload + "\n").encode("utf-8")
+                s.sendall(send_bytes)
+                time.sleep(0.3)
+                try:
+                    resp_raw = s.recv(4096)
+                    response = resp_raw.decode("latin-1", errors="ignore")
+                except Exception:
+                    pass
+
+            s.close()
+            combined = banner + "\n" + response
+            flags = re.findall(r"(?:HQX|flag|CTF|hackquest)\{[^}]+\}", combined, re.IGNORECASE)
+
+            return json.dumps({
+                "status": "connected",
+                "host": host,
+                "port": port,
+                "banner": banner[:1000],
+                "response": response[:1000],
+                "flags_found": list(set(flags))
+            }, indent=2)
+        except Exception as e:
+            return json.dumps({"error": f"Socket connection to {host}:{port} failed: {str(e)}"})
+
     return json.dumps({"error": f"Unknown tool: {tool_name}"})
 
 # =========================================================================
@@ -718,12 +905,12 @@ class CTFOrchestratorAgent:
         self.provider = LLM_PROVIDER
         self.system_prompt = (
             "You are an expert Autonomous Cybersecurity & CTF Copilot Agent equipped with Python scripting capabilities "
-            "(requests, httpx, pwntools, pycryptodome, BeautifulSoup, base64, hashlib, re). "
+            "(z3-solver, sympy, pycryptodome, randcrack, requests, httpx, socket, BeautifulSoup, base64, hashlib, re). "
             "When given a challenge: "
             "1. Determine its domain: Web Application Security, Cryptography, Reverse Engineering & Binary, or Forensics & Log Analysis. "
             "2. Query your Hugging Face ZeroGPU Vector Knowledge Base or DNA Knowledge Graph for patterns. "
-            "3. Use your specialized tools (CyberChef decoder, Binary Strings & Decompiler inspector, Web probe, Forensic Engine). "
-            "4. Verify your exploits autonomously using execute_python_sandbox before returning your answer! "
+            "3. Use your specialized tools (CyberChef decoder, Binary Strings & Decompiler inspector, Web probe, Forensic Engine, Netcat Socket probe, CTFd manager). "
+            "4. Verify your exploits autonomously using execute_python_sandbox before returning your answer! You can use z3 (from z3 import *), pycryptodome, sympy, and randcrack directly! "
             "5. If you find a new attack relationship, register it with sync_dna_attack_tree. "
             "6. Remember all past clues, keys, and findings across conversational session turns. "
             "7. Output clean, runnable exploit code and the extracted flag (format: HQX{...}, flag{...}, or CTF{...})."

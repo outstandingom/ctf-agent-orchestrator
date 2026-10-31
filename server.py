@@ -81,6 +81,19 @@ class GitHubReadRequest(BaseModel):
     path: str = Field(..., description="File path")
     branch: Optional[str] = Field("main", description="Branch name")
 
+class CTFdRequest(BaseModel):
+    action: str = Field("list_challenges", description="list_challenges, get_challenge, submit_flag, get_scoreboard")
+    ctfd_url: str = Field(..., description="Base URL of CTFd instance")
+    token: Optional[str] = Field(None, description="API token or session cookie")
+    challenge_id: Optional[int] = Field(None, description="Challenge ID")
+    flag: Optional[str] = Field(None, description="Flag string to submit")
+
+class SocketProbeRequest(BaseModel):
+    host: str = Field(..., description="Target host or IP")
+    port: int = Field(..., description="Target port")
+    payload: Optional[str] = Field("", description="Payload (text or hex:...)")
+    timeout_seconds: Optional[float] = Field(5.0, description="Socket timeout")
+
 def render_dashboard_html() -> str:
     candidates = [
         os.path.join(current_dir, "public", "index.html"),
@@ -342,6 +355,37 @@ def read_file(req: GitHubReadRequest):
         return json.loads(res)
     except:
         return {"output": res}
+
+@app.post("/api/ctfd")
+@app.post("/ctfd")
+def manage_ctfd(req: CTFdRequest):
+    payload = {
+        "action": req.action,
+        "ctfd_url": req.ctfd_url,
+        "token": req.token,
+        "challenge_id": req.challenge_id,
+        "flag": req.flag
+    }
+    raw = execute_tool("ctfd_manage", payload)
+    try:
+        return json.loads(raw)
+    except Exception:
+        return {"response": raw}
+
+@app.post("/api/socket/probe")
+@app.post("/socket/probe")
+def probe_socket(req: SocketProbeRequest):
+    payload = {
+        "host": req.host,
+        "port": req.port,
+        "payload": req.payload,
+        "timeout_seconds": req.timeout_seconds
+    }
+    raw = execute_tool("interactive_socket_probe", payload)
+    try:
+        return json.loads(raw)
+    except Exception:
+        return {"response": raw}
 
 if __name__ == "__main__":
     import uvicorn

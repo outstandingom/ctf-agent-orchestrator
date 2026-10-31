@@ -144,6 +144,9 @@
       <button onclick="switchTab('tab-infra')" id="nav-infra" class="tab-btn px-4 py-2 rounded-lg font-medium text-slate-400 hover:text-white hover:bg-slate-900 transition flex items-center gap-2 border border-transparent whitespace-nowrap">
         <span>⚡</span> Infrastructure Matrix
       </button>
+      <button onclick="switchTab('tab-ctfd')" id="nav-ctfd" class="tab-btn px-4 py-2 rounded-lg font-medium text-slate-400 hover:text-white hover:bg-slate-900 transition flex items-center gap-2 border border-transparent whitespace-nowrap">
+        <span>🏆</span> CTFd Autopilot & Netcat
+      </button>
     </div>
 
     <button onclick="refreshStatus()" class="text-xs text-slate-400 hover:text-cyan-400 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-800 hover:border-cyan-800 transition whitespace-nowrap">
@@ -450,6 +453,105 @@
           </div>
 
         </div>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- TAB 6: CTFD AUTOPILOT & NETCAT PROBE       -->
+    <!-- ========================================== -->
+    <div id="tab-ctfd" class="tab-content hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Left: CTFd API Integration -->
+        <div class="lg:col-span-7 glass-card rounded-2xl p-6 border border-slate-800 space-y-5">
+          <div class="flex items-center justify-between border-b border-slate-800/80 pb-4">
+            <div>
+              <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                <span>🏆</span> CTFd Competition Autopilot
+              </h2>
+              <p class="text-xs text-slate-400">Direct integration with CTFd REST APIs to ingest challenges, download binaries, and auto-submit flags.</p>
+            </div>
+            <span class="px-2.5 py-1 rounded-full text-[10px] font-mono bg-cyan-950 text-cyan-400 border border-cyan-800">REST v1</span>
+          </div>
+
+          <!-- Connection Inputs -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1">CTFd Platform Base URL</label>
+              <input type="text" id="ctfd-url" placeholder="https://ctf.hackquest.tcs.com or http://localhost:8000" value="https://demo.ctfd.io" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1">User Token / Session Cookie</label>
+              <input type="password" id="ctfd-token" placeholder="ctfd_... or session=eyJ..." class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <button onclick="fetchCTFdChallenges()" id="btn-fetch-ctfd" class="px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-semibold rounded-lg shadow transition flex items-center gap-1.5">
+              <span>📥</span> Fetch Active Challenges
+            </button>
+            <button onclick="fetchCTFdScoreboard()" class="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 text-xs font-medium rounded-lg transition flex items-center gap-1.5">
+              <span>📊</span> Scoreboard
+            </button>
+            <span id="ctfd-status" class="text-xs text-slate-400 font-mono"></span>
+          </div>
+
+          <!-- Challenge List Container -->
+          <div class="space-y-2">
+            <div class="flex items-center justify-between text-xs font-semibold text-slate-400 uppercase tracking-wider px-1">
+              <span>Available Challenges</span>
+              <span id="ctfd-count" class="text-cyan-400 font-mono">0 loaded</span>
+            </div>
+            <div id="ctfd-challenges-list" class="max-h-96 overflow-y-auto space-y-2 pr-1">
+              <div class="text-center text-xs text-slate-500 py-10 border border-dashed border-slate-800 rounded-xl">
+                Enter your CTFd credentials above and click "Fetch Active Challenges" to pull the competition scoreboard.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Interactive Netcat / Socket Tester -->
+        <div class="lg:col-span-5 glass-card rounded-2xl p-6 border border-slate-800 space-y-5">
+          <div class="flex items-center justify-between border-b border-slate-800/80 pb-4">
+            <div>
+              <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                <span>🔌</span> Netcat / TCP Socket Probe
+              </h2>
+              <p class="text-xs text-slate-400">Connect to remote challenge netcat daemons, send payloads, and capture flags.</p>
+            </div>
+            <span class="px-2.5 py-1 rounded-full text-[10px] font-mono bg-emerald-950 text-emerald-400 border border-emerald-800">Raw TCP</span>
+          </div>
+
+          <div class="grid grid-cols-3 gap-3">
+            <div class="col-span-2">
+              <label class="block text-xs font-medium text-slate-300 mb-1">Target Host / IP</label>
+              <input type="text" id="socket-host" placeholder="challenge.hackquest.com" value="httpbin.org" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1">Port</label>
+              <input type="number" id="socket-port" placeholder="1337" value="80" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Payload to Send (Text or hex:414243)</label>
+            <textarea id="socket-payload" rows="2" placeholder="e.g. GET / HTTP/1.1\r\nHost: target\r\n\r\n or hex:deadbeef" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">GET /status/200 HTTP/1.1&#10;Host: httpbin.org&#10;&#10;</textarea>
+          </div>
+
+          <div class="flex items-center justify-between">
+            <button onclick="probeSocketTerminal()" id="btn-probe-socket" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow transition flex items-center gap-1.5">
+              <span>⚡</span> Send & Read Response
+            </button>
+            <span id="socket-status" class="text-xs text-slate-400 font-mono"></span>
+          </div>
+
+          <!-- Socket Terminal Output -->
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Socket Terminal Output</label>
+            <div id="socket-output" class="bg-black border border-slate-800 rounded-xl p-3.5 text-emerald-400 font-mono text-xs max-h-64 overflow-y-auto whitespace-pre-wrap">Ready to connect...</div>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -956,6 +1058,178 @@
 
       } catch (err) {
         container.innerHTML = `<div class="col-span-full text-center text-xs text-rose-400 py-8">Error: ${err.message}</div>`;
+      }
+    }
+
+    // ==========================================
+    // CTFD & NETCAT JAVASCRIPT HANDLERS
+    // ==========================================
+    let cachedCTFdChallenges = [];
+
+    async function fetchCTFdChallenges() {
+      const url = document.getElementById('ctfd-url').value.trim();
+      const token = document.getElementById('ctfd-token').value.trim();
+      const statusEl = document.getElementById('ctfd-status');
+      const countEl = document.getElementById('ctfd-count');
+      const container = document.getElementById('ctfd-challenges-list');
+
+      if (!url) {
+        statusEl.textContent = 'Enter a valid URL';
+        return;
+      }
+
+      statusEl.textContent = 'Fetching...';
+      container.innerHTML = '<div class="text-center text-xs text-slate-400 py-8">Connecting to CTFd API...</div>';
+
+      try {
+        const res = await fetch('/api/ctfd', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'list_challenges', ctfd_url: url, token: token })
+        });
+        const data = await res.json();
+
+        if (data.status === 'success' && data.challenges) {
+          cachedCTFdChallenges = data.challenges;
+          countEl.textContent = `${data.challenges.length} loaded`;
+          statusEl.textContent = 'Success';
+
+          if (data.challenges.length === 0) {
+            container.innerHTML = '<div class="text-center text-xs text-slate-400 py-8">No challenges active on this platform.</div>';
+            return;
+          }
+
+          container.innerHTML = data.challenges.map(c => `
+            <div class="bg-slate-950 border border-slate-800 hover:border-cyan-800/80 rounded-xl p-3.5 transition flex items-center justify-between gap-3">
+              <div class="space-y-1 truncate">
+                <div class="flex items-center gap-2">
+                  <span class="font-bold text-sm text-white truncate">${c.name}</span>
+                  <span class="text-[10px] px-2 py-0.5 rounded-full ${c.solved_by_me ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-slate-800 text-slate-300'} font-mono">${c.solved_by_me ? 'SOLVED' : `${c.value || 0} pts`}</span>
+                </div>
+                <div class="text-[11px] text-slate-400 font-mono">${c.category || 'General'} (ID: ${c.id})</div>
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
+                <button onclick="solveCTFdChallenge(${c.id}, '${c.name.replace(/'/g, "\\'")}', '${(c.category || 'General').replace(/'/g, "\\'")}', ${c.value || 0})" class="px-2.5 py-1.5 bg-cyan-950 hover:bg-cyan-900 text-cyan-300 border border-cyan-800 text-xs rounded-lg transition font-medium flex items-center gap-1">
+                  <span>🤖</span> Solve
+                </button>
+                <button onclick="promptSubmitFlag(${c.id})" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs rounded-lg transition font-medium">
+                  Submit Flag
+                </button>
+              </div>
+            </div>
+          `).join('');
+        } else {
+          statusEl.textContent = 'Error';
+          container.innerHTML = `<div class="text-center text-xs text-rose-400 py-8">Failed to fetch: ${data.message || data.response || 'Unauthorized'}</div>`;
+        }
+      } catch (err) {
+        statusEl.textContent = 'Failed';
+        container.innerHTML = `<div class="text-center text-xs text-rose-400 py-8">Network error: ${err.message}</div>`;
+      }
+    }
+
+    async function fetchCTFdScoreboard() {
+      const url = document.getElementById('ctfd-url').value.trim();
+      const token = document.getElementById('ctfd-token').value.trim();
+      const statusEl = document.getElementById('ctfd-status');
+      const container = document.getElementById('ctfd-challenges-list');
+
+      statusEl.textContent = 'Loading scoreboard...';
+      try {
+        const res = await fetch('/api/ctfd', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'get_scoreboard', ctfd_url: url, token: token })
+        });
+        const data = await res.json();
+        if (data.status === 'success' && data.top_10) {
+          statusEl.textContent = 'Scoreboard loaded';
+          container.innerHTML = `
+            <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800 space-y-2">
+              <h3 class="text-xs font-bold text-cyan-400 uppercase tracking-wider mb-2">Top Teams Standings</h3>
+              ${data.top_10.map((t, idx) => `
+                <div class="flex items-center justify-between text-xs py-1 border-b border-slate-800/60">
+                  <span class="font-bold text-white">#${t.pos || idx + 1} ${t.name || t.account_id}</span>
+                  <span class="font-mono text-emerald-400">${t.score || 0} pts</span>
+                </div>
+              `).join('')}
+            </div>
+          `;
+        }
+      } catch (err) {
+        statusEl.textContent = 'Error';
+      }
+    }
+
+    function solveCTFdChallenge(chalId, chalName, chalCat, chalVal) {
+      const url = document.getElementById('ctfd-url').value.trim();
+      const token = document.getElementById('ctfd-token').value.trim();
+      switchTab('tab-agent');
+      document.getElementById('challenge-prompt').value = 
+        `CTFd Challenge [${chalCat}]: "${chalName}" (${chalVal} pts, ID: ${chalId}).\n` +
+        `Fetch the full challenge details and attachments from CTFd platform (${url}), solve the challenge autonomously, and submit the captured flag directly to CTFd!`;
+      runAgentSolve();
+    }
+
+    async function promptSubmitFlag(chalId) {
+      const flag = prompt(`Enter Flag to submit for challenge ID ${chalId}:`, 'HQX{...}');
+      if (!flag) return;
+      const url = document.getElementById('ctfd-url').value.trim();
+      const token = document.getElementById('ctfd-token').value.trim();
+      try {
+        const res = await fetch('/api/ctfd', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'submit_flag', ctfd_url: url, token: token, challenge_id: chalId, flag: flag })
+        });
+        const data = await res.json();
+        alert(`CTFd Response:\nStatus: ${data.result || data.status || 'unknown'}\nMessage: ${data.message || JSON.stringify(data)}`);
+      } catch (err) {
+        alert(`Submission Error: ${err.message}`);
+      }
+    }
+
+    async function probeSocketTerminal() {
+      const host = document.getElementById('socket-host').value.trim();
+      const port = parseInt(document.getElementById('socket-port').value.trim(), 10);
+      const payload = document.getElementById('socket-payload').value;
+      const statusEl = document.getElementById('socket-status');
+      const outputEl = document.getElementById('socket-output');
+
+      if (!host || !port) {
+        statusEl.textContent = 'Enter host and port';
+        return;
+      }
+
+      statusEl.textContent = 'Connecting...';
+      outputEl.textContent = `Connecting to ${host}:${port}...\n`;
+
+      try {
+        const res = await fetch('/api/socket/probe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ host: host, port: port, payload: payload, timeout_seconds: 5.0 })
+        });
+        const data = await res.json();
+        statusEl.textContent = data.status || 'Done';
+
+        let text = `[CONNECTED] ${data.host}:${data.port}\n`;
+        if (data.banner) {
+          text += `[BANNER]:\n${data.banner}\n`;
+        }
+        if (data.response) {
+          text += `[RESPONSE]:\n${data.response}\n`;
+        }
+        if (data.flags_found && data.flags_found.length > 0) {
+          text += `\n🎉 FLAGS CAPTURED:\n${data.flags_found.join('\n')}\n`;
+        }
+        if (data.error) {
+          text += `[ERROR]: ${data.error}\n`;
+        }
+        outputEl.textContent = text;
+      } catch (err) {
+        statusEl.textContent = 'Failed';
+        outputEl.textContent = `Socket Error: ${err.message}`;
       }
     }
 
