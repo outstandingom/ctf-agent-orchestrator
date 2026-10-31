@@ -297,6 +297,7 @@ def solve_challenge(req: SolveRequest):
     result = agent.run_with_trace(req.prompt, session_id=req.session_id)
     elapsed = round(time.time() - t0, 2)
     result["elapsed_seconds"] = elapsed
+    result["solution"] = result.get("final_answer", "")
     return result
 
 @app.post("/api/rag/search")

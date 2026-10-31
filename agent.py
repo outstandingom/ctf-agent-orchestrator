@@ -1077,13 +1077,33 @@ class CTFOrchestratorAgent:
 
         messages.append({"role": "user", "content": user_prompt})
 
+        fallback_models = [self.model, "openai/gpt-oss-120b", "openai/gpt-oss-20b"]
+
         for turn in range(max_turns):
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                tools=OPENAI_TOOLS,
-                tool_choice="auto"
-            )
+            response = None
+            last_err = None
+            for model_candidate in fallback_models:
+                for retry in range(2):
+                    try:
+                        response = self.client.chat.completions.create(
+                            model=model_candidate,
+                            messages=messages,
+                            tools=OPENAI_TOOLS,
+                            tool_choice="auto"
+                        )
+                        break
+                    except Exception as err:
+                        last_err = err
+                        err_str = str(err).lower()
+                        if "429" in err_str or "rate limit" in err_str:
+                            time.sleep(1.5)
+                            continue
+                        break
+                if response is not None:
+                    break
+
+            if response is None:
+                return f"Agent paused: Groq rate limit reached across models ({last_err}). Please wait 15 seconds."
 
             msg = response.choices[0].message
             messages.append(msg)
