@@ -361,6 +361,28 @@ OPENAI_TOOLS = [
                 "required": ["host", "port"]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "parallel_exploit_worker",
+            "description": "Executes multiple candidate exploit scripts concurrently in parallel worker threads with auto flag extraction. Returns immediately as soon as any worker discovers the flag.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "scripts": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "List of Python exploit scripts representing distinct attack variations or parameter searches"
+                    },
+                    "timeout_seconds": {
+                        "type": "integer",
+                        "description": "Per-worker timeout limit in seconds (default: 12, max: 25)"
+                    }
+                },
+                "required": ["scripts"]
+            }
+        }
     }
 ]
 
@@ -693,17 +715,27 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
             ret = res.returncode
             found_flags = re.findall(r"(?:flag|CTF|HQX|hackquest)\{[^}]+\}", out + "\n" + err, re.IGNORECASE)
             
+            diagnosis = "Exploit successful! Flag captured." if found_flags else (
+                f"Execution failed with return code {ret}. Check stderr traceback and correct payload/dependencies." if ret != 0 else
+                "Script completed with code 0, but no CTF flag was found in stdout/stderr. Check if output needs secondary decoding or parameter modification."
+            )
+
             result = {
                 "status": "success" if ret == 0 else "error",
                 "returncode": ret,
                 "elapsed_seconds": elapsed,
+                "diagnosis": diagnosis,
                 "stdout": out[-2000:] if len(out) > 2000 else out,
                 "stderr": err[-1000:] if len(err) > 1000 else err,
                 "flags_captured": list(set(found_flags))
             }
             return json.dumps(result, indent=2)
         except subprocess.TimeoutExpired:
-            return json.dumps({"error": f"Execution timed out after {timeout} seconds"}, indent=2)
+            return json.dumps({
+                "status": "timeout",
+                "error": f"Execution timed out after {timeout} seconds",
+                "diagnosis": "Timeout expired. Reduce search space, use batching, or increase timeout_seconds."
+            }, indent=2)
         except Exception as e:
             return json.dumps({"error": f"Sandbox execution failed: {str(e)}"}, indent=2)
         finally:
@@ -712,7 +744,61 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
             except Exception:
                 pass
 
-    # 7. FORENSICS SANDBOX ENGINE (Controlled Path Safe)
+    # 7. PARALLEL MULTI-STRATEGY EXPLOIT WORKERS
+    elif tool_name == "parallel_exploit_worker":
+        scripts = tool_input.get("scripts", [])
+        timeout = min(int(tool_input.get("timeout_seconds", 12)), 25)
+        if not scripts:
+            return json.dumps({"error": "No scripts provided in scripts list"})
+
+        import concurrent.futures
+
+        def _execute_single(idx, code):
+            with tempfile.NamedTemporaryFile("w", suffix=f"_par_{idx}.py", delete=False, encoding="utf-8") as pf:
+                pf.write(code)
+                pname = pf.name
+            try:
+                t0 = time.time()
+                res = subprocess.run([sys.executable, pname], capture_output=True, text=True, timeout=timeout)
+                el = round(time.time() - t0, 3)
+                combined = res.stdout + "\n" + res.stderr
+                flags = re.findall(r"(?:flag|CTF|HQX|hackquest)\{[^}]+\}", combined, re.IGNORECASE)
+                return {
+                    "strategy_id": idx + 1,
+                    "returncode": res.returncode,
+                    "elapsed_seconds": el,
+                    "flags_captured": list(set(flags)),
+                    "stdout_snippet": res.stdout[-400:] if len(res.stdout) > 400 else res.stdout,
+                    "stderr_snippet": res.stderr[-200:] if len(res.stderr) > 200 else res.stderr
+                }
+            except subprocess.TimeoutExpired:
+                return {"strategy_id": idx + 1, "returncode": -1, "status": "timeout", "flags_captured": []}
+            except Exception as ex:
+                return {"strategy_id": idx + 1, "returncode": -2, "error": str(ex), "flags_captured": []}
+            finally:
+                try:
+                    os.remove(pname)
+                except Exception:
+                    pass
+
+        results = []
+        captured_flags = []
+        with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(scripts), 6)) as pool:
+            futures = [pool.submit(_execute_single, i, sc) for i, sc in enumerate(scripts)]
+            for fut in concurrent.futures.as_completed(futures):
+                r = fut.result()
+                results.append(r)
+                if r.get("flags_captured"):
+                    captured_flags.extend(r["flags_captured"])
+
+        return json.dumps({
+            "status": "completed",
+            "strategies_tested": len(scripts),
+            "winning_flags": list(set(captured_flags)),
+            "all_results": results
+        }, indent=2)
+
+    # 8. FORENSICS SANDBOX ENGINE (Controlled Path Safe)
     elif tool_name == "run_forensics_inspection":
         file_path = tool_input.get("file_path", "")
         if not os.path.exists(file_path):
@@ -909,11 +995,13 @@ class CTFOrchestratorAgent:
             "When given a challenge: "
             "1. Determine its domain: Web Application Security, Cryptography, Reverse Engineering & Binary, or Forensics & Log Analysis. "
             "2. Query your Hugging Face ZeroGPU Vector Knowledge Base or DNA Knowledge Graph for patterns. "
-            "3. Use your specialized tools (CyberChef decoder, Binary Strings & Decompiler inspector, Web probe, Forensic Engine, Netcat Socket probe, CTFd manager). "
+            "3. Use your specialized tools (CyberChef decoder, Binary Strings & Decompiler inspector, Web probe, Forensic Engine, Netcat Socket probe, CTFd manager, parallel_exploit_worker). "
             "4. Verify your exploits autonomously using execute_python_sandbox before returning your answer! You can use z3 (from z3 import *), pycryptodome, sympy, and randcrack directly! "
-            "5. If you find a new attack relationship, register it with sync_dna_attack_tree. "
-            "6. Remember all past clues, keys, and findings across conversational session turns. "
-            "7. Output clean, runnable exploit code and the extracted flag (format: HQX{...}, flag{...}, or CTF{...})."
+            "5. If a script fails or captures no flag, reflect on the error traceback, modify your payload/technique, and RETRY autonomously. "
+            "6. For complex challenges with multiple attack branches or parameter searches, use parallel_exploit_worker to test all variations concurrently! "
+            "7. If you find a new attack relationship, register it with sync_dna_attack_tree. "
+            "8. Remember all past clues, keys, and findings across conversational session turns. "
+            "9. Output clean, runnable exploit code and the extracted flag (format: HQX{...}, flag{...}, or CTF{...})."
         )
 
         if self.provider == "groq":

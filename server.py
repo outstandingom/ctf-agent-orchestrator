@@ -94,6 +94,14 @@ class SocketProbeRequest(BaseModel):
     payload: Optional[str] = Field("", description="Payload (text or hex:...)")
     timeout_seconds: Optional[float] = Field(5.0, description="Socket timeout")
 
+class SandboxRunRequest(BaseModel):
+    code: str = Field(..., description="Python code to run in sandbox")
+    timeout_seconds: Optional[int] = Field(10, description="Execution timeout in seconds")
+
+class ParallelRunRequest(BaseModel):
+    scripts: List[str] = Field(..., description="List of Python scripts to run concurrently")
+    timeout_seconds: Optional[int] = Field(12, description="Per-script timeout in seconds")
+
 def render_dashboard_html() -> str:
     candidates = [
         os.path.join(current_dir, "public", "index.html"),
@@ -382,6 +390,30 @@ def probe_socket(req: SocketProbeRequest):
         "timeout_seconds": req.timeout_seconds
     }
     raw = execute_tool("interactive_socket_probe", payload)
+    try:
+        return json.loads(raw)
+    except Exception:
+        return {"response": raw}
+
+@app.post("/api/sandbox/run")
+@app.post("/sandbox/run")
+def run_sandbox_endpoint(req: SandboxRunRequest):
+    raw = execute_tool("execute_python_sandbox", {
+        "code": req.code,
+        "timeout_seconds": req.timeout_seconds
+    })
+    try:
+        return json.loads(raw)
+    except Exception:
+        return {"response": raw}
+
+@app.post("/api/sandbox/parallel")
+@app.post("/sandbox/parallel")
+def run_parallel_endpoint(req: ParallelRunRequest):
+    raw = execute_tool("parallel_exploit_worker", {
+        "scripts": req.scripts,
+        "timeout_seconds": req.timeout_seconds
+    })
     try:
         return json.loads(raw)
     except Exception:
