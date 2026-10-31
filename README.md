@@ -1,6 +1,10 @@
-# 🤖 CTF AI Orchestrator Agent
+# 🤖 CTF AI Orchestrator Command Center (v2.0)
 
-An autonomous cybersecurity co-pilot and CTF problem solver agent built for automated challenge analysis, multi-tier vector retrieval, local forensic sandboxing, and autonomous code execution & GitHub deployment.
+An autonomous cybersecurity copilot, CTF solver engine, and real-time command center built for high-stakes cybersecurity competitions (such as **TCS HackQuest, PicoCTF, and Google CTF**).
+
+Combines ultra-fast LPU inference (Groq), automated SMT theorem proving (`z3-solver`), cryptographic analysis (`pycryptodome`, `sympy`), PRNG state recovery (`randcrack`), interactive Netcat TCP probing, and CTFd competition management.
+
+📖 **For the full in-depth user and developer manual, see [COMPLETE_USER_GUIDE.md](docs/COMPLETE_USER_GUIDE.md).**
 
 ---
 
@@ -9,30 +13,26 @@ An autonomous cybersecurity co-pilot and CTF problem solver agent built for auto
 ```
                          ┌──────────────────────────────────────────┐
                          │         CTF AI Orchestrator Agent        │
-                         │     (Groq Qwen 27B / Claude 3.5)         │
+                         │    (Groq Qwen 27B / Claude 3.5 Sonnet)   │
                          └──────────────────┬───────────────────────┘
                                             │
-        ┌───────────────────────────────────┼────────────────────────────────────┐
-        │                                   │                                    │
-        ▼                                   ▼                                    ▼
-┌──────────────┐                  ┌──────────────────┐                 ┌──────────────────┐
-│ Vector RAG   │                  │ Forensic Engine  │                 │ Render GitHub    │
-│ Gateway      │                  │ Sandbox          │                 │ MCP Gateway      │
-│ (HF ZeroGPU) │                  │ (Steg / Hashes)  │                 │ (Render Server)  │
-└──────────────┘                  └──────────────────┘                 └──────────────────┘
+         ┌──────────────────────────────────┼────────────────────────────────────┐
+         │                                  │                                    │
+         ▼                                  ▼                                    ▼
+┌──────────────────┐               ┌──────────────────┐                 ┌──────────────────┐
+│ Hugging Face     │               │ Python 3.15      │                 │ Render GitHub    │
+│ ZeroGPU RAG      │               │ Sandbox Engine   │                 │ MCP Gateway      │
+│ (A10G Space)     │               │ (Z3, PyCrypto)   │                 │ (Remote Micro)   │
+└──────────────────┘               └────────┬─────────┘                 └──────────────────┘
+                                            │
+                       ┌────────────────────┴────────────────────┐
+                       │                                         │
+                       ▼                                         ▼
+            ┌──────────────────────┐                  ┌──────────────────────┐
+            │ CTFd Autopilot       │                  │ Interactive TCP      │
+            │ Manager (REST v1)    │                  │ Netcat Socket Probe  │
+            └──────────────────────┘                  └──────────────────────┘
 ```
-
-1. **Multi-Tier Knowledge Retrieval (`search_knowledge_base`)**:
-   - **Tier 1 (Cloud ZeroGPU)**: Connects to high-memory Hugging Face Space (`https://outstandingom-vector.hf.space`) for TF-IDF / cosine semantic similarity search over past writeups.
-   - **Tier 2 (Local RAG)**: Fast fallback to local FastAPI vector service (`http://localhost:8001`).
-   - **Tier 3 (DNA Knowledge Graph)**: Queries self-evolving knowledge graph (`https://outstandingom-knowledge-graph-env.hf.space`).
-
-2. **Forensic Sandbox Tools**:
-   - **`run_forensics_inspection`**: Performs LSB chi-square uniformity tests, ZIP file signature carving, and SHA256/MD5 hashing.
-   - **`search_flag_patterns`**: Extracts `flag{...}`, `CTF{...}`, base64 payloads, and invisible Unicode zero-width characters (`\u200b`, `\u200c`).
-
-3. **Autonomous GitHub Commits (`read_github_file`, `commit_github_file`, `list_github_repos`)**:
-   - Commits generated Python solvers, exploit scripts, and writeup documentation directly to your GitHub repositories via your Render MCP server.
 
 ---
 
@@ -44,46 +44,78 @@ An autonomous cybersecurity co-pilot and CTF problem solver agent built for auto
 git clone https://github.com/outstandingom/ctf-agent-orchestrator.git
 cd ctf-agent-orchestrator
 pip install -r requirements.txt
+pip install z3-solver pycryptodome sympy randcrack mpmath
 ```
 
-### 2. Configuration
+### 2. Configuration (.env)
 
-Copy `.env.example` to `.env` and fill in your keys:
-
-```bash
-cp .env.example .env
-```
+Configure your `.env` file:
 
 ```env
 LLM_PROVIDER=groq
-GROQ_API_KEY=your_groq_api_key
+GROQ_API_KEY=gsk_your_groq_api_key
 GROQ_MODEL=qwen/qwen3.8-27b
 
+# Dashboard Port (Default: 8080)
+DASHBOARD_PORT=8080
+
+# External Gateways
 HF_VECTOR_URL=https://outstandingom-vector.hf.space
 MCP_SERVER_URL=https://mcp-server-2sl7.onrender.com
-MCP_API_KEY=your_mcp_api_key
+MCP_API_KEY=outstandingom_mcp_2026hjfbechjbdhjjfbnkqjkj
 ```
 
-### 3. Usage
-
-Run interactive challenge solving:
+### 3. Launching the Command Center
 
 ```bash
-python agent.py
+# Starts local FastAPI backend + Web Command Center
+python server.py
 ```
+Open **[http://localhost:8080](http://localhost:8080)** in your browser.
 
-Or invoke in code:
+---
 
-```python
-from agent import CTFOrchestratorAgent
+## 🌐 Host, Port & Network Configuration
 
-agent = CTFOrchestratorAgent()
-result = agent.run("Server uses time(0) as random seed for XOR cipher. Write solver.")
-print(result)
+### Changing Port & Host Interface
+* **Via Environment Variable**: Set `DASHBOARD_PORT=9000` in `.env` and run `python server.py`.
+* **Via Uvicorn CLI**:
+  ```powershell
+  python -m uvicorn server:app --host 0.0.0.0 --port 8080 --app-dir .
+  ```
+  * `host 127.0.0.1`: Binds locally (accessible only from your machine).
+  * `host 0.0.0.0`: Binds to all network interfaces (accessible to your local network / LAN).
+
+### Resolving Port Conflicts (Errno 10048)
+If port 8080 is already in use:
+```powershell
+# PowerShell: Find and kill the conflicting process
+$p = (Get-NetTCPConnection -LocalPort 8080).OwningProcess
+Stop-Process -Id $p -Force
 ```
 
 ---
 
-## 🔒 Security
-- Secrets and tokens are kept strictly in `.env`.
-- Destructive operations on GitHub are protected via 2-Step verification lock on the MCP server.
+## 🎯 Competition Playbooks
+
+### Standard CTFd Competitions (TCS HackQuest, PicoCTF)
+1. Open the **🏆 CTFd Autopilot & Netcat** tab.
+2. Enter the CTFd URL and your user API token (`ctfd_...`).
+3. Click **Fetch Challenges** to populate your competition queue.
+4. Click **🤖 Solve** to ingest challenge details, solve via SMT/crypto sandbox, and submit flags automatically.
+
+### Google CTF & Proprietary Platforms
+1. Join your team in your browser: `https://capturetheflag.withgoogle.com/team/loki` (Access Key: `-P5G9PyOgiLko9eg5WzD`).
+2. For remote socket challenges (`nc host port`), probe them directly in the **Interactive Socket Probe** terminal.
+3. For math, crypto, or reverse engineering, paste prompts into **🤖 Agent Mission Control** to solve with `z3-solver` and extract `CTF{...}` flags.
+
+---
+
+## 🔒 Security & Safe Execution
+* All exploit verification runs inside local memory sandboxes.
+* Remote GitHub operations are protected via 2-Step Verification Lock on the Render MCP Gateway.
+* Automatic Groq model rotation prevents 429 rate limit errors during multi-turn agent loops.
+
+---
+
+*Authored by Om Uikey — CTF AI Orchestrator Core Maintainer*
