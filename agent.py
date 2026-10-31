@@ -860,10 +860,10 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
     # 10. CTFD PLATFORM MANAGER (Autonomous Challenge Fetching & Flag Submission)
     elif tool_name == "ctfd_manage":
         action = tool_input.get("action", "list_challenges")
-        ctfd_url = tool_input.get("ctfd_url", "").rstrip("/")
-        token = tool_input.get("token", "").strip()
+        ctfd_url = (tool_input.get("ctfd_url") or "").rstrip("/")
+        token = (tool_input.get("token") or "").strip()
         challenge_id = tool_input.get("challenge_id")
-        flag = tool_input.get("flag", "").strip()
+        flag = (tool_input.get("flag") or "").strip()
 
         if not ctfd_url:
             return json.dumps({"error": "ctfd_url is required"})
@@ -882,7 +882,17 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
             if action == "list_challenges":
                 r = session.get(f"{ctfd_url}/api/v1/challenges", timeout=10)
                 if r.status_code == 200:
-                    data = r.json().get("data", [])
+                    try:
+                        resp_json = r.json()
+                        data = resp_json.get("data", [])
+                    except Exception:
+                        return json.dumps({
+                            "status": "error",
+                            "code": 200,
+                            "message": f"Server at {ctfd_url} returned an HTML webpage instead of CTFd API JSON. The target URL is a web portal, not a CTFd REST API platform.",
+                            "preview": r.text[:250].replace("\n", " ").strip()
+                        }, indent=2)
+
                     simplified = [
                         {
                             "id": c.get("id"),
@@ -894,7 +904,19 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
                         for c in data
                     ]
                     return json.dumps({"status": "success", "count": len(simplified), "challenges": simplified}, indent=2)
-                return json.dumps({"status": "error", "code": r.status_code, "response": r.text})
+                elif r.status_code in (401, 403):
+                    return json.dumps({
+                        "status": "error",
+                        "code": r.status_code,
+                        "message": f"Access denied (HTTP {r.status_code}). Provide a valid CTFd Access Token (ctfd_...) or session cookie."
+                    }, indent=2)
+                elif r.status_code == 404:
+                    return json.dumps({
+                        "status": "error",
+                        "code": 404,
+                        "message": f"Endpoint {ctfd_url}/api/v1/challenges was not found (404). This platform does not support the CTFd REST API format."
+                    }, indent=2)
+                return json.dumps({"status": "error", "code": r.status_code, "response": r.text[:300]}, indent=2)
 
             elif action == "get_challenge":
                 if not challenge_id:
