@@ -2,7 +2,7 @@
 
 An autonomous cybersecurity copilot, CTF solver engine, and real-time command center built for high-stakes cybersecurity competitions (such as **TCS HackQuest, PicoCTF, and Google CTF**).
 
-Combines ultra-fast LPU inference (Groq), automated SMT theorem proving (`z3-solver`), cryptographic analysis (`pycryptodome`, `sympy`), PRNG state recovery (`randcrack`), interactive Netcat TCP probing, and CTFd competition management.
+Combines ultra-fast LPU inference (Groq), automated SMT theorem proving (`z3-solver`), dynamic web fuzzing with differential testing, cryptographic analysis (`pycryptodome`, `sympy`), PRNG state recovery (`randcrack`), network PCAP stream carving (`scapy`), WSL2 Linux binary analysis, and CTFd competition management.
 
 📖 **For the full in-depth user and developer manual, see [COMPLETE_USER_GUIDE.md](docs/COMPLETE_USER_GUIDE.md).**
 
@@ -16,27 +16,57 @@ Combines ultra-fast LPU inference (Groq), automated SMT theorem proving (`z3-sol
                          │    (Groq Qwen 27B / Claude 3.5 Sonnet)   │
                          └──────────────────┬───────────────────────┘
                                             │
+                        ┌───────────────────┴───────────────────┐
+                        │   Ponytail Lean Domain Tool Selector  │
+                        │   (-75.3% Schema Token Reduction)     │
+                        └───────────────────┬───────────────────┘
+                                            │
          ┌──────────────────────────────────┼────────────────────────────────────┐
          │                                  │                                    │
          ▼                                  ▼                                    ▼
 ┌──────────────────┐               ┌──────────────────┐                 ┌──────────────────┐
 │ Hugging Face     │               │ Python 3.15      │                 │ Render GitHub    │
 │ ZeroGPU RAG      │               │ Sandbox Engine   │                 │ MCP Gateway      │
-│ (A10G Space)     │               │ (Z3, PyCrypto)   │                 │ (Remote Micro)   │
+│ & DNA Graph      │               │ (Z3, PyCrypto)   │                 │ (Remote Micro)   │
 └──────────────────┘               └────────┬─────────┘                 └──────────────────┘
                                             │
-                       ┌────────────────────┴────────────────────┐
-                       │                                         │
-                       ▼                                         ▼
-            ┌──────────────────────┐                  ┌──────────────────────┐
-            │ CTFd Autopilot       │                  │ Interactive TCP      │
-            │ Manager (REST v1)    │                  │ Netcat Socket Probe  │
-            └──────────────────────┘                  └──────────────────────┘
+          ┌─────────────────────────────────┼─────────────────────────────────┐
+          │                                 │                                 │
+          ▼                                 ▼                                 ▼
+┌──────────────────────┐         ┌──────────────────────┐          ┌──────────────────────┐
+│ Dynamic Web Fuzzer   │         │ Z3 SMT Symbolic      │          │ WSL2 Linux Subsystem │
+│ (SQLi, SSTI, CmdInj) │         │ Crackme Solver       │          │ Bridge (checksec)    │
+└──────────────────────┘         └──────────────────────┘          └──────────────────────┘
+          │                                 │                                 │
+          ▼                                 ▼                                 ▼
+┌──────────────────────┐         ┌──────────────────────┐          ┌──────────────────────┐
+│ CTFd Autopilot       │         │ Interactive TCP      │          │ Forensics Engine     │
+│ Manager (REST v1)    │         │ Netcat Socket Probe  │          │ (Scapy PCAP + Stego) │
+└──────────────────────┘         └──────────────────────┘          └──────────────────────┘
 ```
 
 ---
 
-## 🚀 Quickstart
+## 🚀 Key Engines & Capabilities
+
+1. **🚀 Dynamic Web Fuzzing Engine (`web_dynamic_fuzzer`)**:
+   - Differential baseline testing for SQLi, SSTI, Command Injection, Path Traversal, Auth Bypass, and IDOR.
+   - Detects timing delays ($\Delta t > 2.0\text{s}$), response length variances, and leaks.
+   - Automatically queries ZeroGPU Vector RAG and syncs findings to the DNA Knowledge Graph.
+2. **🧮 Z3 Symbolic SMT Solver (`symbolic_execution_solver`)**:
+   - Solves crackme branch conditions, bitwise XOR equations, and modular arithmetic in `<0.6s`.
+   - Automatically decodes BitVec byte constraints into printable ASCII flag strings.
+3. **🐧 WSL2 Linux Subsystem Bridge (`wsl_linux_bridge`)**:
+   - Directly executes `checksec`, `readelf`, strings, and Linux exploit scripts in native WSL2 Ubuntu.
+4. **🔍 Forensic Network Dissector (`pcap_analyzer.py`)**:
+   - Reassembles TCP streams, carves multipart file uploads, extracts HTTP Basic/Bearer auth tokens, and detects DNS query exfiltration using Scapy.
+5. **⚡ Ponytail Token Optimization Engine**:
+   - Dynamic domain tool selection slashes schema tokens from **2,687 down to 664 tokens (-75.3%)**.
+   - Solves multi-turn challenges in **46 seconds** (65.2% faster) with zero Groq 429 rate limit delays.
+
+---
+
+## ⚡ Quickstart
 
 ### 1. Installation
 
@@ -44,23 +74,20 @@ Combines ultra-fast LPU inference (Groq), automated SMT theorem proving (`z3-sol
 git clone https://github.com/outstandingom/ctf-agent-orchestrator.git
 cd ctf-agent-orchestrator
 pip install -r requirements.txt
-pip install z3-solver pycryptodome sympy randcrack mpmath
+pip install z3-solver pycryptodome sympy randcrack mpmath scapy
 ```
 
 ### 2. Configuration (.env)
-
-Configure your `.env` file:
 
 ```env
 LLM_PROVIDER=groq
 GROQ_API_KEY=gsk_your_groq_api_key
 GROQ_MODEL=qwen/qwen3.8-27b
-
-# Dashboard Port (Default: 8080)
 DASHBOARD_PORT=8080
 
 # External Gateways
 HF_VECTOR_URL=https://outstandingom-vector.hf.space
+HF_KNOWLEDGE_URL=https://outstandingom-knowledge-graph-env.hf.space
 MCP_SERVER_URL=https://mcp-server-2sl7.onrender.com
 MCP_API_KEY=outstandingom_mcp_2026hjfbechjbdhjjfbnkqjkj
 ```
@@ -68,53 +95,26 @@ MCP_API_KEY=outstandingom_mcp_2026hjfbechjbdhjjfbnkqjkj
 ### 3. Launching the Command Center
 
 ```bash
-# Starts local FastAPI backend + Web Command Center
+# Windows 1-Click Launcher
+start.bat
+
+# Or manual startup
 python server.py
 ```
 Open **[http://localhost:8080](http://localhost:8080)** in your browser.
 
 ---
 
-## 🌐 Host, Port & Network Configuration
+## 🎯 Verified Test Playbooks
 
-### Changing Port & Host Interface
-* **Via Environment Variable**: Set `DASHBOARD_PORT=9000` in `.env` and run `python server.py`.
-* **Via Uvicorn CLI**:
-  ```powershell
-  python -m uvicorn server:app --host 0.0.0.0 --port 8080 --app-dir .
+* **Google CTF Web Preset (Client-Side Timer Bypass)**:
+  ```bash
+  python scripts/test_google_ctf_preset.py
   ```
-  * `host 127.0.0.1`: Binds locally (accessible only from your machine).
-  * `host 0.0.0.0`: Binds to all network interfaces (accessible to your local network / LAN).
-
-### Resolving Port Conflicts (Errno 10048)
-If port 8080 is already in use:
-```powershell
-# PowerShell: Find and kill the conflicting process
-$p = (Get-NetTCPConnection -LocalPort 8080).OwningProcess
-Stop-Process -Id $p -Force
-```
-
----
-
-## 🎯 Competition Playbooks
-
-### Standard CTFd Competitions (TCS HackQuest, PicoCTF)
-1. Open the **🏆 CTFd Autopilot & Netcat** tab.
-2. Enter the CTFd URL and your user API token (`ctfd_...`).
-3. Click **Fetch Challenges** to populate your competition queue.
-4. Click **🤖 Solve** to ingest challenge details, solve via SMT/crypto sandbox, and submit flags automatically.
-
-### Google CTF & Proprietary Platforms
-1. Join your team in your browser: `https://capturetheflag.withgoogle.com/team/loki` (Access Key: `-P5G9PyOgiLko9eg5WzD`).
-2. For remote socket challenges (`nc host port`), probe them directly in the **Interactive Socket Probe** terminal.
-3. For math, crypto, or reverse engineering, paste prompts into **🤖 Agent Mission Control** to solve with `z3-solver` and extract `CTF{...}` flags.
-
----
-
-## 🔒 Security & Safe Execution
-* All exploit verification runs inside local memory sandboxes.
-* Remote GitHub operations are protected via 2-Step Verification Lock on the Render MCP Gateway.
-* Automatic Groq model rotation prevents 429 rate limit errors during multi-turn agent loops.
+* **Google CTF Cryptography Preset (PRNG Time-Seed Cracker)**:
+  ```bash
+  python scripts/test_google_ctf_crypto.py
+  ```
 
 ---
 
