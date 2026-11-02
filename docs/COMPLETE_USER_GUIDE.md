@@ -16,40 +16,47 @@ Welcome to the definitive user and developer documentation for the **CTF AI Orch
 4. [Prerequisites & Solver Libraries](#4-prerequisites--solver-libraries)
 5. [Dashboard Features & Module Walkthrough](#5-dashboard-features--module-walkthrough)
    - [🤖 Agent Mission Control](#-agent-mission-control)
+   - [🚀 Dynamic Fuzzing & Z3 SMT Studio](#-dynamic-fuzzing--z3-smt-studio)
+   - [🐧 WSL2 Linux Subsystem Bridge](#-wsl2-linux-subsystem-bridge)
    - [💻 Exploit Code Reviewer & Live Sandbox Studio](#-exploit-code-reviewer--live-sandbox-studio)
-   - [🧬 Vector RAG Explorer](#-vector-rag-explorer)
-   - [🔍 Forensics Sandbox Engine](#-forensics-sandbox-engine)
+   - [🧬 Vector RAG Explorer & DNA Knowledge Graph](#-vector-rag-explorer--dna-knowledge-graph)
+   - [🔍 Forensics Sandbox Engine (PCAP & Stego)](#-forensics-sandbox-engine-pcap--stego)
    - [🐙 GitHub Lifetime MCP Gateway](#-github-lifetime-mcp-gateway)
    - [🏆 CTFd Autopilot & Netcat Terminal](#-ctfd-autopilot--netcat-terminal)
-6. [Competition Playbooks](#6-competition-playbooks)
+6. [Ponytail Token Engine & Rate-Limit Optimization](#6-ponytail-token-engine--rate-limit-optimization)
+7. [Competition Playbooks](#7-competition-playbooks)
    - [Playbook 1: Standard CTFd Competitions (TCS HackQuest, PicoCTF)](#playbook-1-standard-ctfd-competitions-tcs-hackquest-picoctf)
    - [Playbook 2: Google CTF & Proprietary Platforms](#playbook-2-google-ctf--proprietary-platforms)
-7. [API Reference](#7-api-reference)
-8. [Troubleshooting & FAQs](#8-troubleshooting--faqs)
+8. [API Reference](#8-api-reference)
+9. [Troubleshooting & FAQs](#9-troubleshooting--faqs)
 
 ---
 
 ## 1. System Architecture Overview
 
-The system operates as a unified cyber command center combining fast LPU cloud reasoning, local sandboxed execution, real-time SMT math solving, and external Git integration:
+The system operates as a unified cyber command center combining fast LPU cloud reasoning, local sandboxed execution, real-time SMT math solving, dynamic endpoint fuzzing, and external Git integration:
 
 ```mermaid
 flowchart TD
     User["Cyber Operator / Player"] -->|Browser UI| Dash["Web Command Center (http://localhost:8080)"]
     Dash -->|REST / SSE Streams| Fast["FastAPI Core Orchestrator (server.py)"]
     
-    subgraph Reasoning & Retrieval
-        Fast -->|Fast LPU Inference| Groq["Groq API (Qwen 27B / GPT-OSS 120B / 20B)"]
-        Fast -->|Deep Reasoning| Claude["Anthropic Claude 3.5 Sonnet"]
+    subgraph Reasoning & Optimization
+        Fast -->|Lean Tool Router (Ponytail)| Router["Dynamic Domain Tool Selector (-75% Tokens)"]
+        Router -->|Fast LPU Inference| Groq["Groq API (Qwen 27B / GPT-OSS 120B / 20B)"]
+        Router -->|Deep Reasoning| Claude["Anthropic Claude 3.5 Sonnet"]
         Fast -->|Writeup Similarity| HFSpace["Hugging Face ZeroGPU Vector Space"]
         Fast -->|Semantic Attack Tree| DNA["DNA Knowledge Graph Space"]
     end
     
     subgraph Execution & Exploitation
-        Fast -->|Math / Crypto / SMT| Sandbox["Python 3.15 Sandbox Engine (z3, sympy, pycryptodome, randcrack)"]
+        Fast -->|Differential Analysis| Fuzzer["Dynamic Web Fuzzer (SQLi, SSTI, CmdInj, Traversal)"]
+        Fast -->|BitVec Constraint Solving| Z3SMT["Z3 SMT Symbolic Execution Solver"]
+        Fast -->|ELF / Linux Shell| WSL["WSL2 Linux Bridge (checksec, gdb, python3)"]
+        Fast -->|Math / Crypto Sandbox| Sandbox["Python 3.15 Sandbox Engine (z3, sympy, pycrypto, randcrack)"]
         Fast -->|Multi-Threading| Workers["4x Parallel Exploit Worker Pool"]
         Fast -->|Raw TCP Streams| Netcat["Interactive Socket Client (socket)"]
-        Fast -->|Carving & Stego| Forensic["Forensic Engine (LSB, PK-ZIP, Strings)"]
+        Fast -->|Network & File Carving| Forensic["Forensic Engine (Scapy PCAP, LSB, ZIP, Strings)"]
     end
     
     subgraph External Platforms
@@ -65,90 +72,42 @@ flowchart TD
 
 ### Default Ports and Endpoints
 
-| Service | Host | Port | URL | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| **Command Center** | `0.0.0.0` | `8080` | `http://localhost:8080` | Main FastAPI app + UI dashboard |
-| **Local Vector RAG** | `127.0.0.1` | `8001` | `http://localhost:8001` | Optional local vector retrieval engine |
-| **Render MCP Gateway**| Remote | `443` | `https://mcp-server-2sl7.onrender.com` | Live GitHub MCP microservice |
-| **Hugging Face Space**| Remote | `443` | `https://outstandingom-vector.hf.space` | ZeroGPU A10G semantic vector space |
-
----
+| Service | Host | Port | Endpoint URL | Role |
+| :--- | :--- | :---: | :--- | :--- |
+| **CTF Command Center Dashboard** | `0.0.0.0` | **`8080`** | `http://localhost:8080` | Main User Interface & REST API Gateway |
+| **Local Writeup Vector RAG** | `127.0.0.1` | `8001` | `http://localhost:8001` | Local FastEmbed Vector Store fallback |
+| **Render GitHub MCP Gateway** | Remote | `443` | `https://mcp-server-2sl7.onrender.com` | Microservice for persistent GitHub operations |
+| **ZeroGPU Vector Space** | Remote | `443` | `https://outstandingom-vector.hf.space` | A10G Cloud Knowledge Base for Writeups |
+| **DNA Knowledge Graph** | Remote | `443` | `https://outstandingom-knowledge-graph-env.hf.space` | Semantic Cyber Threat Graph & Attack Trees |
 
 ### How to Change Host & Port
 
-You can run the server on any custom port or interface using three different methods:
+By default, the server binds to `0.0.0.0` on port `8080`. To change the port:
 
-#### Method A: Environment Variable (Recommended)
-Add or edit `DASHBOARD_PORT` in your `.env` file:
-```env
-DASHBOARD_PORT=9000
-```
-Then launch:
-```bash
-python server.py
-```
+1. Open `.env` and set:
+   ```env
+   DASHBOARD_PORT=9000
+   ```
+2. Or pass it directly from the terminal:
+   ```powershell
+   $env:DASHBOARD_PORT="9000"; python server.py
+   ```
 
-#### Method B: Direct Uvicorn CLI
-Run uvicorn directly from terminal, specifying `--host` and `--port`:
-```powershell
-# Run locally on port 5000:
-python -m uvicorn server:app --host 127.0.0.1 --port 5000 --app-dir c:\Users\SGI\Downloads\ctf-agent-orchestrator
-
-# Run accessible to all network devices (LAN):
-python -m uvicorn server:app --host 0.0.0.0 --port 8080 --app-dir c:\Users\SGI\Downloads\ctf-agent-orchestrator
-```
-
-#### Method C: Behind a Reverse Proxy (Nginx / Cloudflare Tunnel)
-If binding behind Nginx or Cloudflare Tunnel:
-```nginx
-location / {
-    proxy_pass http://127.0.0.1:8080;
-    proxy_http_version 1.1;
-    proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection "upgrade";
-    proxy_set_header Host $host;
-}
-```
-
----
-
-### Finding & Killing Port Conflicts (Errno 10048)
+### Finding & Killing Port Conflicts (Errno 10048 / WinError 10013)
 
 If you see:
 ```text
-ERROR: [Errno 10048] error while attempting to bind on address ('0.0.0.0', 8080): 
-only one usage of each socket address is normally permitted
+[Errno 10048] error while attempting to bind on address ('0.0.0.0', 8080): only one usage of each socket address is normally permitted
 ```
-An existing Python process is already holding port 8080.
 
-#### On Windows (PowerShell):
+Run in PowerShell:
 ```powershell
-# 1. Identify which process ID (PID) is listening on port 8080:
-Get-NetTCPConnection -LocalPort 8080 | Select-Object OwningProcess, State
+# 1. Identify which PID is holding port 8080:
+netstat -ano | findstr :8080
 
-# 2. Check the process name:
-Get-Process -Id <PID>
-
-# 3. Kill the conflicting process immediately:
-Stop-Process -Id <PID> -Force
+# 2. Terminate the blocking process:
+taskkill /F /PID <PID>
 ```
-
-#### On Linux / macOS:
-```bash
-# Find PID
-lsof -i :8080
-# Kill process
-kill -9 <PID>
-```
-
----
-
-### Localhost vs. Vercel Cloud Execution
-
-* **`http://localhost:8080` (Local Backend)**:
-  Contains the **full autonomous engine**. It has direct access to your local Python environment, C++ binaries (`z3-solver`, `pycryptodome`), raw TCP network sockets, local files, and forensic engines.
-* **`https://ctf-agent-orchestrator.vercel.app` (Vercel Cloud Frontend)**:
-  Hosts the HTML/JS dashboard statically. Because Vercel serverless functions have strict 10s timeouts and cannot execute local C++ binaries or raw netcat sockets, all heavy computations must be executed on **`http://localhost:8080`**.
 
 ---
 
@@ -190,96 +149,104 @@ FORENSIC_DIR=c:\Users\SGI\Downloads\forensic
 
 ## 4. Prerequisites & Solver Libraries
 
-The local Python environment is pre-equipped with gold-standard CTF tools:
-
 ```bash
 pip install fastapi uvicorn requests python-dotenv openai anthropic pydantic
-pip install z3-solver pycryptodome sympy randcrack mpmath
+pip install z3-solver pycryptodome sympy randcrack mpmath scapy
 ```
 
-* **`z3-solver`**: SMT solver for cracking linear congruential equations, byte constraint systems, and reverse-engineering license keys.
+* **`z3-solver`**: SMT solver for solving crackmes, bitwise XOR equations, modular arithmetic, and branch conditions.
 * **`pycryptodome`**: AES, RSA, DES, ECC, ARC4, and hashing implementations.
 * **`sympy`**: Fast prime testing, modular inverses, discrete logarithms, and polynomial factorization.
-* **`randcrack`**: Recovers internal 624-integer state of Python's Mersenne Twister (`random` module) from 624 consecutive outputs to predict all future/past tokens.
+* **`randcrack`**: Recovers internal 624-integer state of Python's Mersenne Twister (`random` module) from 624 consecutive outputs.
+* **`scapy`**: Dissects `.pcap` and `.pcapng` network capture streams, carves multipart files, and analyzes DNS tunnels.
 
 ---
 
 ## 5. Dashboard Features & Module Walkthrough
 
-Open **`http://localhost:8080`** to access the 6 core tabs:
+Open **`http://localhost:8080`** to access all modules:
 
 ### 🤖 Agent Mission Control
-* **Autonomous Multi-Turn Solver**: Enter any challenge prompt, code snippet, or math problem. The agent plans, calls external tools, writes exploit code, executes it in the sandbox, verifies the solution, and returns the flag.
-* **Multi-Model Rotation**: If Groq's `qwen` model hits a rate-limit (429), it automatically falls back to `openai/gpt-oss-120b` or `openai/gpt-oss-20b` with automatic backoff.
+* **Autonomous Multi-Turn Solver**: Ingests challenge descriptions, plans reasoning turns, calls specialized tools, verifies code in the sandbox, self-corrects on errors, and extracts the flag.
+* **Multi-Model Rotation**: Rotates across `qwen/qwen3.8-27b`, `openai/gpt-oss-120b`, and `openai/gpt-oss-20b` with backoff.
+
+### 🚀 Dynamic Fuzzing & Z3 SMT Studio
+* **Dynamic Web Fuzzer (`POST /api/fuzz/scan`)**:
+  * Input target URL, attack category (SQLi, SSTI, Command Injection, Path Traversal, Auth Bypass, IDOR), method (GET/POST), and parameter.
+  * Queries ZeroGPU Vector RAG and DNA Graph for high-potency payloads.
+  * Executes multi-threaded differential testing measuring status codes, length variance, $\Delta t > 2.0\text{s}$ blind injection time delays, error disclosures, and flag patterns (`HQX{...}`, `flag{...}`).
+  * Auto-syncs discovered vulnerabilities to the DNA Knowledge Graph.
+* **Z3 Symbolic SMT Solver (`POST /api/symbolic/solve`)**:
+  * Input equations or Python constraints (e.g. `flag[0] ^ 0x42 == 100; flag[1] + 10 == 75`).
+  * Formulates BitVec expressions, executes `z3.Solver()` in sandboxed memory, and outputs SAT models + auto-decoded ASCII strings.
+
+### 🐧 WSL2 Linux Subsystem Bridge (`POST /api/wsl/exec`)
+* Executes Linux terminal commands, `checksec --file=./vuln`, `readelf`, strings, and Python pwntools scripts directly in native WSL2 Ubuntu.
+* Automatically reports distro availability or provides single-line activation commands (`wsl --install -d Ubuntu`).
 
 ### 💻 Exploit Code Reviewer & Live Sandbox Studio
-* Located directly below Agent Mission Control.
-* **Live Python Sandbox**: Edit any Python solver script directly in your browser and click **▶️ Run in Sandbox**.
-* **👥 4x Parallel Workers**: Spawns 4 independent execution threads testing multiple candidate keys, offsets, or seeds concurrently.
+* **Live Python Sandbox**: Edit and execute any Python solver script directly in browser.
+* **👥 4x Parallel Workers**: Executes multiple exploit candidates concurrently with auto-flag extraction.
 
-### 🧬 Vector RAG Explorer
-* Connects directly to Hugging Face ZeroGPU A10G Space.
-* Search across hundreds of past real CTF writeups by category (**Cryptography, Forensics, Web, Binary Exploitation**).
+### 🧬 Vector RAG Explorer & DNA Knowledge Graph
+* Connects directly to Hugging Face ZeroGPU A10G Space and DNA Knowledge Graph.
+* Search across hundreds of verified past CTF writeups by category (**Cryptography, Forensics, Web, Binary Exploitation**).
 
-### 🔍 Forensics Sandbox Engine
-* Integrates directly with [`c:\Users\SGI\Downloads\forensic`](file:///c:/Users/SGI/Downloads/forensic).
-* **LSB Byte Bitstream Reconstruction**: Extracts least significant bits from images and searches for `HQX{...}` or `CTF{...}`.
-* **PK ZIP Header Carving**: Scans raw binary streams for `\x50\x4B\x03\x04` signatures and decompresses embedded archives.
+### 🔍 Forensics Sandbox Engine (PCAP & Stego)
+* **PCAP / PCAPNG Network Traffic Stream Dissector**: Reassembles TCP streams, carves multipart files (`filename="..."`), extracts HTTP Basic/Bearer auth tokens, and detects DNS query exfiltration.
+* **LSB Steganography**: Carves embedded data from PNG/BMP bitplanes.
+* **PK ZIP Header Carving**: Scans raw binary streams for `\x50\x4B\x03\x04` signatures.
 
 ### 🐙 GitHub Lifetime MCP Gateway
-* Live bridge to [`https://mcp-server-2sl7.onrender.com`](https://mcp-server-2sl7.onrender.com).
-* Click **Fetch Repositories** to inspect all 15 repositories.
-* Click **Commit Solver to GitHub** to automatically push verified Python solvers directly to your `forensic` or `ctf-agent-orchestrator` repositories.
+* Bridge to [`https://mcp-server-2sl7.onrender.com`](https://mcp-server-2sl7.onrender.com).
+* List repositories, read files, and commit verified exploit scripts directly to GitHub (`POST /api/github/commit`).
 
 ### 🏆 CTFd Autopilot & Netcat Terminal
-* **CTFd Challenge Manager**: Connects to any standard CTFd instance. Loads all active challenges with point values, solves them autonomously, and submits the flag.
-* **Interactive TCP / Netcat Socket Probe**: Probes raw TCP ports (`nc <host> <port>`), reads server banners, sends interactive text or hex payloads (`hex:414141...`), and flags captured tokens.
+* **CTFd Challenge Manager**: Connects to any standard CTFd instance, fetches challenges, solves them autonomously, and submits flags.
+* **Interactive TCP / Netcat Socket Probe**: Probes raw TCP ports (`nc <host> <port>`), reads server banners, sends interactive text or hex payloads (`hex:414141...`), and extracts flags.
 
 ---
 
-## 6. Competition Playbooks
+## 6. Ponytail Token Engine & Rate-Limit Optimization
+
+To eliminate Groq free-tier rate limits (7,000 Input Tokens Per Minute):
+* **Lean Domain Tool Selector (`select_relevant_tools`)**: Dynamically filters tool schemas so only 4–5 tools relevant to the challenge domain are sent. Reduces schema token payload from **2,687 tokens down to 664 tokens (-75.3%)**.
+* **Context History Pruning**: Caps prior tool outputs in message history to 1,000 characters, preventing prompt growth over multi-turn reasoning.
+* **Result**: Turn execution latency dropped from **133.7s down to 46.5s (65.2% speedup)** with zero 429 rate-limit pauses.
+
+---
+
+## 7. Competition Playbooks
 
 ### Playbook 1: Standard CTFd Competitions (TCS HackQuest, PicoCTF)
-
-1. Obtain your CTFd platform URL (e.g., `https://hackquest.tcsapps.com` or `https://demo.ctfd.io`).
-2. Generate an API Access Token inside CTFd under **Settings -> Access Tokens** (format: `ctfd_...`).
-3. In your dashboard, open the **🏆 CTFd Autopilot & Netcat** tab.
-4. Paste the URL and Token, then click **Fetch Challenges**.
-5. All active challenges will load into your queue. Click **🤖 Solve** on any challenge: the agent will ingest the description, solve it, and submit the flag directly!
-
----
+1. In CTFd under **Settings -> Access Tokens**, generate an API token (`ctfd_...`).
+2. Open **🏆 CTFd Autopilot & Netcat** on `http://localhost:8080`.
+3. Enter URL and Token, click **Fetch Challenges**.
+4. Click **🤖 Solve** on any challenge: the agent ingests details, queries RAG, solves in sandbox, and auto-submits the flag!
 
 ### Playbook 2: Google CTF & Proprietary Platforms
-
-Google CTF (`capturetheflag.withgoogle.com`) uses Google OAuth and does not have a public CTFd REST API.
-
-1. **Browser Login (One-Time)**:
-   - Open your browser and navigate to: `https://capturetheflag.withgoogle.com/team/loki`
-   - Sign in with your Google account and enter team access key: `-P5G9PyOgiLko9eg5WzD`.
-2. **For Remote Netcat Challenges (`nc host port`)**:
-   - Copy the challenge host and port.
-   - Go to `http://localhost:8080` -> **🏆 CTFd Autopilot & Netcat** -> **Interactive Socket Probe**.
-   - Connect, grab the banner, and inject payloads.
-3. **For Math / Crypto / Reverse Engineering Challenges**:
-   - Copy the challenge prompt or script from Google CTF.
-   - Paste it into **🤖 Agent Mission Control** on `http://localhost:8080`.
-   - The agent will formulate the SMT equation, solve it with Z3 in the sandbox, and display the flag: `CTF{...}`.
-4. **Submit Flag**:
-   - Copy the captured flag and paste it into the Google CTF web portal to claim your points.
+1. Join your team in browser: `https://capturetheflag.withgoogle.com/team/loki` (Access Key: `-P5G9PyOgiLko9eg5WzD`).
+2. **For Web Challenges**: Use **🚀 Dynamic Fuzzing & Z3 SMT** tab to run differential fuzzing or client-side timer bypass (`localStorage.setItem('timer_completed', 'true'); fetch('/flag')`).
+3. **For PRNG / Crypto Challenges**: Paste description into **🤖 Agent Mission Control** to retrieve the PRNG time-seed pattern and crack the XOR stream.
+4. **For Netcat Socket Targets**: Connect via **Interactive Socket Probe** on `http://localhost:8080`.
+5. Copy the recovered flag and submit it on the Google CTF portal.
 
 ---
 
-## 7. API Reference
+## 8. API Reference
 
 All backend capabilities are exposed via REST API on `http://127.0.0.1:8080`:
 
 | Method | Endpoint | Request Body | Description |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/api/status` | None | Returns real-time health and latency of all services |
+| `GET` | `/api/status` | None | Real-time health and latency of all services |
 | `POST`| `/api/solve` | `{"prompt": "...", "provider": "groq"}` | Runs full autonomous agent loop |
 | `POST`| `/api/solve/stream` | `{"prompt": "...", "provider": "groq"}` | Real-time Server-Sent Events (SSE) streaming |
+| `POST`| `/api/fuzz/scan` | `{"target_url": "...", "category": "SQLi"}` | Runs vector-guided dynamic web fuzzer |
+| `POST`| `/api/symbolic/solve`| `{"constraints": "flag[0] ^ 0x42 == 100", "length": 1}` | Solves equations with Z3 SMT engine |
+| `POST`| `/api/wsl/exec` | `{"command": "uname -a", "timeout_seconds": 15}` | Executes Linux command via WSL2 bridge |
 | `POST`| `/api/rag/search` | `{"query": "...", "domain": "Cryptography"}` | Queries HF ZeroGPU vector database |
-| `POST`| `/api/forensics/scan`| `{"file_path": "...", "text": "..."}` | Runs forensic extractors and flag regex |
+| `POST`| `/api/forensics/scan`| `{"file_path": "...", "text": "..."}` | Runs forensic extractors, PCAP analyzer, and flag regex |
 | `GET` | `/api/github/repos` | None | Returns GitHub repositories via Render MCP |
 | `POST`| `/api/github/commit`| `{"repo": "...", "path": "...", "content": "..."}` | Commits file to GitHub |
 | `POST`| `/api/ctfd` | `{"action": "list_challenges", "ctfd_url": "..."}` | Interacts with CTFd platform |
@@ -289,19 +256,19 @@ All backend capabilities are exposed via REST API on `http://127.0.0.1:8080`:
 
 ---
 
-## 8. Troubleshooting & FAQs
+## 9. Troubleshooting & FAQs
 
 #### Q1: Why do I get "Unauthorized" on Vercel (`https://ctf-agent-orchestrator.vercel.app`)?
-* **Answer**: Vercel hosts the static HTML dashboard. It does not run your local Python interpreter, C++ libraries (`z3`), or raw network sockets. Open your local command center at **`http://localhost:8080`** for full execution.
+* **Answer**: Vercel hosts the static HTML dashboard. Open your local command center at **`http://localhost:8080`** for full local sandbox execution, Z3 solving, and raw network sockets.
 
 #### Q2: How do I fix "Windows Defender blocked a file" ([Errno 22])?
-* **Answer**: Windows Defender flags raw reverse shells or exploit payloads written to disk. All exploit templates are sanitized in-memory or executed inside safe sandbox environments. Avoid saving raw reverse-shell strings into `.py` files on Windows.
+* **Answer**: Windows Defender flags raw reverse shells written to disk. All exploit templates are sanitized in-memory or executed inside safe sandbox environments. Avoid saving raw reverse shells to `.py` files on Windows.
 
 #### Q3: What if Groq hits Rate Limit (Error 429)?
-* **Answer**: The system includes automatic multi-model rotation. If `qwen` hits a rate limit, the orchestrator automatically routes the query to `openai/gpt-oss-120b` or `openai/gpt-oss-20b` with exponential backoff.
+* **Answer**: The Ponytail lean tool selector slashes schema tokens by 75.3%, keeping requests under the 7,000 ITPM limit. If a limit is reached, automatic multi-model rotation switches to `openai/gpt-oss-120b` or `openai/gpt-oss-20b`.
 
 #### Q4: How do I test Linux ELF binary challenges on Windows?
-* **Answer**: Windows cannot run Linux ELF binaries natively. For ELF pwn challenges, route execution through a local WSL2 terminal or Docker container (`docker run -it kalilinux/kali-rolling`).
+* **Answer**: Use the **WSL2 Linux Bridge** tab or call `/api/wsl/exec`. If WSL is not installed, run `wsl --install -d Ubuntu` in PowerShell once.
 
 ---
 
