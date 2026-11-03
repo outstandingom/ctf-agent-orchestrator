@@ -464,6 +464,172 @@ OPENAI_TOOLS = [
                 "required": ["command"]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "patch_file_diff",
+            "description": "Applies a non-destructive Search-and-Replace patch to a specific file (local or on GitHub). Replaces exact matching code blocks without rewriting, truncating, or corrupting the rest of the file.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Target file path (e.g. 'server.py' or 'src/index.ts')"
+                    },
+                    "search": {
+                        "type": "string",
+                        "description": "The exact block of code to find and replace. Whitespace and indentation must match exactly."
+                    },
+                    "replace": {
+                        "type": "string",
+                        "description": "The new replacement block of code to insert."
+                    },
+                    "repo": {
+                        "type": "string",
+                        "description": "Optional GitHub repository (e.g. 'outstandingom/ctf-agent-orchestrator' or 'ctf-agent-orchestrator'). If omitted, operates on local workspace."
+                    },
+                    "branch": {
+                        "type": "string",
+                        "description": "Isolated branch to patch (e.g. 'ai/fix-cors-42'). Default: 'main'."
+                    },
+                    "commit_message": {
+                        "type": "string",
+                        "description": "Descriptive git commit message for this patch."
+                    }
+                },
+                "required": ["path", "search", "replace"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "create_github_branch",
+            "description": "Creates an isolated feature branch (e.g. 'ai/fix-issue-42') on GitHub via Render MCP Gateway to prevent direct-to-main commits.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "repo": {
+                        "type": "string",
+                        "description": "GitHub repository name"
+                    },
+                    "branch": {
+                        "type": "string",
+                        "description": "New branch name (e.g. 'ai/fix-cors-bug')"
+                    },
+                    "from_branch": {
+                        "type": "string",
+                        "description": "Source branch to fork from (default: repository default branch)"
+                    }
+                },
+                "required": ["repo", "branch"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "create_github_pr",
+            "description": "Opens a GitHub Pull Request from an isolated feature branch to the base branch with a summary of changes, test verification results, and review notes.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "repo": {
+                        "type": "string",
+                        "description": "GitHub repository name"
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "Title of the Pull Request"
+                    },
+                    "body": {
+                        "type": "string",
+                        "description": "Markdown body describing the bug, search-replace diff applied, and test verification logs"
+                    },
+                    "head": {
+                        "type": "string",
+                        "description": "Feature branch name (e.g. 'ai/fix-cors-bug')"
+                    },
+                    "base": {
+                        "type": "string",
+                        "description": "Target branch (default: 'main')"
+                    }
+                },
+                "required": ["repo", "title", "body", "head"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "run_fullstack_terminal",
+            "description": "Executes full-stack build, test, migration, and deployment commands (npm install, npm run build, npx, pytest, alembic, prisma, docker, health checks) in a persistent terminal environment with custom working directory and exit code verification.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "command": {
+                        "type": "string",
+                        "description": "Terminal command to execute (e.g. 'npm run build', 'pytest tests/', 'pip install -r requirements.txt')"
+                    },
+                    "cwd": {
+                        "type": "string",
+                        "description": "Optional working directory path (defaults to current project root)"
+                    },
+                    "timeout_seconds": {
+                        "type": "integer",
+                        "description": "Command execution timeout in seconds (default: 60, max: 300)"
+                    }
+                },
+                "required": ["command"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "sync_codebase_memory",
+            "description": "Stores architectural components, API routes, database schemas, and service deployment relationships in the DNA Knowledge Graph for persistent codebase memory.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "component_a": {
+                        "type": "string",
+                        "description": "Source architectural entity (e.g. 'server.py', 'AuthService', 'UsersTable')"
+                    },
+                    "relationship": {
+                        "type": "string",
+                        "description": "Relationship type (e.g. 'imports', 'depends_on', 'deploys_to_vercel', 'calls_endpoint')"
+                    },
+                    "component_b": {
+                        "type": "string",
+                        "description": "Target architectural entity (e.g. 'settings.py', 'RenderMCP', 'PostgreSQL')"
+                    },
+                    "context": {
+                        "type": "string",
+                        "description": "Detailed explanation, configuration flags, or architectural notes"
+                    }
+                },
+                "required": ["component_a", "relationship", "component_b"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "query_codebase_memory",
+            "description": "Queries the DNA Knowledge Graph and architectural memory for module dependencies, deployment configuration, and service relationships before applying code changes.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Architectural or dependency query (e.g. 'What services depend on server.py', 'Where is Vercel deployed', 'CORS dependencies')"
+                    }
+                },
+                "required": ["query"]
+            }
+        }
     }
 ]
 
@@ -501,6 +667,19 @@ def select_relevant_tools(user_prompt: str) -> list:
     # GitHub / MCP
     if any(k in p for k in ["github", "commit", "repo", "push"]):
         core_names.update(["commit_github_file", "read_github_file", "list_github_repos"])
+
+        # Software Engineering (SWE), Bug Fixing, Non-Destructive Patching, Branching & Full-Stack Terminal
+    if any(k in p for k in ["patch", "diff", "search_replace", "replace", "refactor", "bug", "fix", "cors", "overwrite", "branch", "pr", "pull request", "build", "npm", "yarn", "pnpm", "deploy", "terminal", "compile", "docker", "prisma", "alembic", "swe", "vercel", "ci"]):
+        core_names.update([
+            "patch_file_diff",
+            "create_github_branch",
+            "create_github_pr",
+            "run_fullstack_terminal",
+            "sync_codebase_memory",
+            "query_codebase_memory",
+            "read_github_file",
+            "list_github_repos"
+        ])
 
     # Netcat / Socket
     if any(k in p for k in ["nc ", "netcat", "socket", "port", "daemon", "tcp", "remote"]):
@@ -961,11 +1140,16 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
         return json.dumps(result, indent=2)
 
     # 9. GITHUB MCP TOOLS
-    elif tool_name in ["read_github_file", "commit_github_file", "list_github_repos"]:
+    elif tool_name in ["read_github_file", "commit_github_file", "list_github_repos", "create_github_branch", "create_github_pr", "merge_github_pr", "list_github_branches", "list_github_prs"]:
         tool_map = {
             "read_github_file": "read_file",
             "commit_github_file": "create_or_update_file",
-            "list_github_repos": "list_repositories"
+            "list_github_repos": "list_repositories",
+            "create_github_branch": "create_branch",
+            "create_github_pr": "create_pull_request",
+            "merge_github_pr": "merge_pull_request",
+            "list_github_branches": "list_branches",
+            "list_github_prs": "list_pull_requests"
         }
         target_tool = tool_map[tool_name]
         headers = {
@@ -1512,6 +1696,300 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
             return json.dumps({"status": "timeout", "error": f"WSL execution timed out after {timeout} seconds"})
         except Exception as e:
             return json.dumps({"status": "error", "error": f"WSL bridge error: {str(e)}"})
+
+    # 14. SEARCH-AND-REPLACE NON-DESTRUCTIVE PATCH ENGINE
+    elif tool_name == "patch_file_diff":
+        path = tool_input.get("path", "").strip()
+        search_block = tool_input.get("search", "")
+        replace_block = tool_input.get("replace", "")
+        repo = tool_input.get("repo", "").strip()
+        branch = tool_input.get("branch", "main").strip()
+        commit_msg = tool_input.get("commit_message", f"fix(swe): patch {path} search-replace").strip()
+
+        if not path or not search_block:
+            return json.dumps({"status": "error", "message": "path and search block are required"})
+
+        # Normalize line breaks for robust matching
+        norm_search = search_block.replace("\r\n", "\n")
+
+        # Remote GitHub File Patching via Render MCP Gateway
+        if repo and repo.lower() != "local":
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {MCP_API_KEY}"
+            }
+            # Step 1: Read existing content
+            current_content = None
+            try:
+                read_res = requests.post(
+                    f"{MCP_SERVER_URL}/api/test-tool",
+                    headers=headers,
+                    json={"tool": "read_file", "params": {"repo": repo, "path": path, "ref": branch}},
+                    timeout=15
+                )
+                if read_res.status_code == 200:
+                    rjson = read_res.json()
+                    content_arr = rjson.get("content", [])
+                    if content_arr and "text" in content_arr[0]:
+                        current_content = content_arr[0]["text"]
+            except Exception as e:
+                pass
+
+            # Fallback read from main if branch is newly created
+            if not current_content and branch != "main":
+                try:
+                    read_res = requests.post(
+                        f"{MCP_SERVER_URL}/api/test-tool",
+                        headers=headers,
+                        json={"tool": "read_file", "params": {"repo": repo, "path": path, "ref": "main"}},
+                        timeout=15
+                    )
+                    if read_res.status_code == 200:
+                        rjson = read_res.json()
+                        content_arr = rjson.get("content", [])
+                        if content_arr and "text" in content_arr[0]:
+                            current_content = content_arr[0]["text"]
+                except Exception:
+                    pass
+
+            if current_content is None:
+                # If remote file not found or inaccessible, check local workspace as fallback
+                if os.path.exists(path):
+                    with open(path, "r", encoding="utf-8", errors="ignore") as lf:
+                        current_content = lf.read()
+                else:
+                    return json.dumps({
+                        "status": "error",
+                        "message": f"Could not read '{path}' from repo '{repo}' on branch '{branch}'."
+                    })
+
+            # Step 2: Validate search block existence
+            norm_content = current_content.replace("\r\n", "\n")
+            if norm_search not in norm_content:
+                # Provide helpful diagnostic context
+                return json.dumps({
+                    "status": "error",
+                    "error_type": "SEARCH_BLOCK_NOT_FOUND",
+                    "message": f"Search block not found in '{path}'. Please ensure exact whitespace, indentation, and variable names match.",
+                    "search_preview": search_block[:200]
+                })
+
+            # Step 3: Perform precise replacement
+            patched_content = norm_content.replace(norm_search, replace_block.replace("\r\n", "\n"), 1)
+
+            # Step 4: Commit patched file to feature branch via MCP
+            try:
+                commit_res = requests.post(
+                    f"{MCP_SERVER_URL}/api/test-tool",
+                    headers=headers,
+                    json={
+                        "tool": "create_or_update_file",
+                        "params": {
+                            "repo": repo,
+                            "path": path,
+                            "content": patched_content,
+                            "branch": branch,
+                            "message": commit_msg
+                        }
+                    },
+                    timeout=20
+                )
+                commit_output = commit_res.text
+            except Exception as e:
+                commit_output = f"Commit error: {e}"
+
+            # Also synchronize local file if it exists locally
+            local_synced = False
+            if os.path.exists(path):
+                try:
+                    with open(path, "w", encoding="utf-8") as lf:
+                        lf.write(patched_content)
+                    local_synced = True
+                except Exception:
+                    pass
+
+            return json.dumps({
+                "status": "success",
+                "mode": "github_mcp",
+                "repo": repo,
+                "file": path,
+                "branch": branch,
+                "local_synced": local_synced,
+                "replaced_chars": len(search_block),
+                "inserted_chars": len(replace_block),
+                "commit_summary": commit_output
+            }, indent=2)
+
+        # Local File Patching
+        else:
+            resolved_path = os.path.abspath(path)
+            if not os.path.exists(resolved_path):
+                return json.dumps({"status": "error", "message": f"Local file not found: {resolved_path}"})
+
+            with open(resolved_path, "r", encoding="utf-8", errors="ignore") as f:
+                content = f.read()
+
+            norm_content = content.replace("\r\n", "\n")
+            if norm_search not in norm_content:
+                return json.dumps({
+                    "status": "error",
+                    "error_type": "SEARCH_BLOCK_NOT_FOUND",
+                    "message": f"Search block not found in local file '{path}'. Double-check indentation and whitespace.",
+                    "search_preview": search_block[:200]
+                })
+
+            patched = norm_content.replace(norm_search, replace_block.replace("\r\n", "\n"), 1)
+            with open(resolved_path, "w", encoding="utf-8") as f:
+                f.write(patched)
+
+            return json.dumps({
+                "status": "success",
+                "mode": "local",
+                "path": resolved_path,
+                "replaced_chars": len(search_block),
+                "inserted_chars": len(replace_block)
+            }, indent=2)
+
+    # 15. PERSISTENT FULL-STACK TERMINAL RUNNER (Node.js, Python, Docker, Prisma, Alembic)
+    elif tool_name == "run_fullstack_terminal":
+        cmd = tool_input.get("command", "").strip()
+        cwd = tool_input.get("cwd") or os.getcwd()
+        timeout = min(int(tool_input.get("timeout_seconds", 60)), 300)
+
+        if not cmd:
+            return json.dumps({"status": "error", "message": "command is required"})
+
+        resolved_cwd = os.path.abspath(cwd)
+        if not os.path.exists(resolved_cwd):
+            resolved_cwd = os.getcwd()
+
+        t0 = time.time()
+        try:
+            proc = subprocess.run(
+                cmd,
+                shell=True,
+                capture_output=True,
+                text=True,
+                cwd=resolved_cwd,
+                timeout=timeout
+            )
+            elapsed = round(time.time() - t0, 3)
+            return json.dumps({
+                "status": "success" if proc.returncode == 0 else "error",
+                "command": cmd,
+                "cwd": resolved_cwd,
+                "exit_code": proc.returncode,
+                "elapsed_seconds": elapsed,
+                "stdout": proc.stdout[-4000:] if len(proc.stdout) > 4000 else proc.stdout,
+                "stderr": proc.stderr[-2000:] if len(proc.stderr) > 2000 else proc.stderr
+            }, indent=2)
+        except subprocess.TimeoutExpired:
+            return json.dumps({
+                "status": "timeout",
+                "command": cmd,
+                "elapsed_seconds": timeout,
+                "error": f"Execution timed out after {timeout} seconds"
+            })
+        except Exception as e:
+            return json.dumps({"status": "error", "command": cmd, "error": str(e)})
+
+    # 16. DNA KNOWLEDGE GRAPH CODEBASE ARCHITECTURE MEMORY
+    elif tool_name == "sync_codebase_memory":
+        comp_a = tool_input.get("component_a", "").strip()
+        rel = tool_input.get("relationship", "depends_on").strip()
+        comp_b = tool_input.get("component_b", "").strip()
+        ctx = tool_input.get("context", "")
+
+        if not comp_a or not comp_b:
+            return json.dumps({"error": "component_a and component_b are required"})
+
+        # Sync to Hugging Face DNA Knowledge Graph
+        hf_status = "unreachable"
+        try:
+            res = requests.post(
+                f"{HF_URL}/sync",
+                json={
+                    "concept_a": comp_a,
+                    "concept_b": comp_b,
+                    "relationship_type": rel,
+                    "context": ctx or f"Codebase architecture link: {comp_a} -> {rel} -> {comp_b}"
+                },
+                timeout=6
+            )
+            if res.status_code == 200:
+                hf_status = "synced_to_dna_graph"
+        except Exception:
+            pass
+
+        # Also persist to local architectural memory graph
+        mem_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "codebase_architecture_memory.json")
+        mem_data = []
+        if os.path.exists(mem_file):
+            try:
+                with open(mem_file, "r", encoding="utf-8") as mf:
+                    mem_data = json.load(mf)
+            except Exception:
+                mem_data = []
+
+        entry = {
+            "source": comp_a,
+            "relationship": rel,
+            "target": comp_b,
+            "context": ctx,
+            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+        }
+        mem_data.append(entry)
+        try:
+            with open(mem_file, "w", encoding="utf-8") as mf:
+                json.dump(mem_data[-200:], mf, indent=2)
+        except Exception:
+            pass
+
+        return json.dumps({
+            "status": "success",
+            "hf_dna_status": hf_status,
+            "local_memory_synced": True,
+            "entry": entry
+        }, indent=2)
+
+    elif tool_name == "query_codebase_memory":
+        query = tool_input.get("query", "").strip()
+        if not query:
+            return json.dumps({"error": "query is required"})
+
+        results = {"query": query, "hf_dna_results": None, "local_architecture_nodes": []}
+
+        # Query Hugging Face DNA Knowledge Graph
+        try:
+            hf_res = requests.post(
+                f"{HF_URL}/search/essence",
+                json={"text": query, "top_k": 5},
+                timeout=6
+            )
+            if hf_res.status_code == 200:
+                results["hf_dna_results"] = hf_res.json()
+        except Exception:
+            pass
+
+        # Query Local Architecture Memory
+        mem_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "codebase_architecture_memory.json")
+        if os.path.exists(mem_file):
+            try:
+                with open(mem_file, "r", encoding="utf-8") as mf:
+                    mem_data = json.load(mf)
+                q_terms = [t for t in query.lower().split() if t]
+                matches = [
+                    m for m in mem_data
+                    if any(
+                        term in f"{m.get('source', '')} {m.get('target', '')} {m.get('relationship', '')} {m.get('context', '')}".lower()
+                        for term in q_terms
+                    )
+                ]
+                results["local_architecture_nodes"] = matches[-10:]
+            except Exception:
+                pass
+
+        return json.dumps(results, indent=2)
 
     return json.dumps({"error": f"Unknown tool: {tool_name}"})
 

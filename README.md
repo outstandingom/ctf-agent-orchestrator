@@ -119,3 +119,46 @@ Open **[http://localhost:8080](http://localhost:8080)** in your browser.
 ---
 
 *Authored by Om Uikey — CTF AI Orchestrator Core Maintainer*
+
+---
+
+## 🛠️ Autonomous SWE & Full-Stack Deployment Studio
+
+In addition to cybersecurity CTF operations, the platform now functions as an **Autonomous Software Engineering (SWE) and Deployment Agent** capable of analyzing codebases, applying non-destructive surgical patches, executing full-stack build/test verification, and orchestrating safe Git pull-request workflows from a single prompt:
+
+### 1. The "Full-File Overwrite" Flaw Eliminated (`patch_file_diff`)
+* **The Problem**: Conventional AI agents overwrite whole 600+ line files when fixing a minor bug (e.g. CORS configuration), routinely dropping helper functions or truncating middle code blocks (`# ... rest of code remains the same`).
+* **The Solution**: The engine emits targeted **Search-and-Replace Blocks**:
+  ```json
+  {
+    "path": "server.py",
+    "search": "allow_origins=['*']",
+    "replace": "allow_origins=os.getenv('CORS_ORIGINS', '*').split(',')",
+    "branch": "ai/fix-cors-wildcard",
+    "commit_message": "fix(cors): restrict wildcard origins to environment configuration"
+  }
+  ```
+  The patch engine validates exact matching of whitespace, indentation, and characters before applying changes, guaranteeing complete preservation of surrounding code.
+
+### 2. Direct-to-Main Git Hazard Eliminated (`create_github_branch` & `create_github_pr`)
+* **The Problem**: Autonomous agents committing directly to `main` break live production environments and trigger broken CI/CD pipelines.
+* **The Solution**: Safe GitHub engineering workflows via the Render MCP Gateway:
+  1. Auto-create isolated feature branch: `create_github_branch(branch="ai/fix-cors-42")`
+  2. Apply non-destructive patch to the branch: `patch_file_diff(...)`
+  3. Run local build and regression tests in the sandbox.
+  4. Open a Pull Request with summary and test verification logs: `create_github_pr(...)`
+
+### 3. Persistent Full-Stack Terminal & Build Sandbox (`run_fullstack_terminal`)
+* Generalizes beyond simple single-script Python runs to persistent terminal execution across modern technology stacks:
+  * **Frontend & Asset Builds**: `npm install`, `npm run build`, `vite build`
+  * **Database Migrations**: `alembic upgrade head`, `npx prisma db push`
+  * **Test Suites & Quality Checks**: `pytest tests/ -v`, `npm test`
+  * **Container Management**: `docker-compose up -d`, `docker ps`
+  * Captures exit codes, stdout, stderr, execution duration, and supports custom working directory (`cwd`).
+
+### 4. Codebase Architecture Memory (DNA Knowledge Graph)
+* Tracks architectural relationships, API routes, database schemas, and cloud deployment mappings using the Hugging Face DNA Knowledge Graph (`https://outstandingom-knowledge-graph-env.hf.space`):
+  * `Component -> Imports -> Module`
+  * `Endpoint -> HandledBy -> Controller`
+  * `Service -> DeployedOn -> Vercel/Render`
+* Exposes `sync_codebase_memory` and `query_codebase_memory` with instant local persistent fallback so project context is remembered across multi-turn sessions.

@@ -150,6 +150,9 @@
       <button onclick="switchTab('tab-fuzz-symbolic')" id="nav-fuzz-symbolic" class="tab-btn px-4 py-2 rounded-lg font-medium text-slate-400 hover:text-white hover:bg-slate-900 transition flex items-center gap-2 border border-transparent whitespace-nowrap">
         <span>🚀</span> Dynamic Fuzzing & Z3 SMT
       </button>
+      <button onclick="switchTab('tab-swe-deploy')" id="nav-swe-deploy" class="tab-btn px-4 py-2 rounded-lg font-medium text-slate-400 hover:text-white hover:bg-slate-900 transition flex items-center gap-2 border border-transparent whitespace-nowrap">
+        <span>🛠️</span> SWE & Deploy Studio
+      </button>
     </div>
 
     <button onclick="refreshStatus()" class="text-xs text-slate-400 hover:text-cyan-400 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-800 hover:border-cyan-800 transition whitespace-nowrap">
@@ -733,6 +736,185 @@ flag[1] + 10 == 75
         </div>
 
         <div id="wsl-output" class="bg-black border border-slate-800 rounded-xl p-3.5 text-emerald-400 font-mono text-xs max-h-48 overflow-y-auto whitespace-pre-wrap">WSL2 terminal output will appear here.</div>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- TAB 8: SWE & DEPLOYMENT STUDIO             -->
+    <!-- ========================================== -->
+    <div id="tab-swe-deploy" class="tab-content hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Left Column: Search & Replace Non-Destructive Patch Editor -->
+        <div class="lg:col-span-7 space-y-6">
+          <div class="glass-card rounded-2xl p-5 border border-cyan-800/40 space-y-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <h2 class="text-base font-bold text-white flex items-center gap-2">
+                  <span>🧩</span> Non-Destructive Search-and-Replace Patch Engine
+                </h2>
+                <p class="text-xs text-slate-400">Patches exact code chunks safely. No full-file rewrites, truncation, or broken helper methods.</p>
+              </div>
+              <button onclick="loadCorsExample()" class="text-[11px] px-2.5 py-1 rounded bg-cyan-950 text-cyan-400 border border-cyan-800 hover:bg-cyan-900 transition">
+                ⚡ Load CORS Example
+              </button>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label class="text-[11px] text-slate-400 block mb-1">Target File Path</label>
+                <input type="text" id="swe-patch-path" placeholder="server.py or src/index.ts" value="server.py" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white font-mono focus:border-cyan-500 focus:outline-none">
+              </div>
+              <div>
+                <label class="text-[11px] text-slate-400 block mb-1">Target Repo (optional)</label>
+                <input type="text" id="swe-patch-repo" placeholder="ctf-agent-orchestrator (or local)" value="" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white font-mono focus:border-cyan-500 focus:outline-none">
+              </div>
+              <div>
+                <label class="text-[11px] text-slate-400 block mb-1">Branch</label>
+                <input type="text" id="swe-patch-branch" placeholder="ai/fix-cors-42" value="main" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white font-mono focus:border-cyan-500 focus:outline-none">
+              </div>
+            </div>
+
+            <div>
+              <label class="text-[11px] text-slate-400 block mb-1">Commit Message</label>
+              <input type="text" id="swe-patch-msg" placeholder="fix(cors): restrict allowed origins from env config" value="fix(swe): non-destructive code patch" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white font-mono focus:border-cyan-500 focus:outline-none">
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="text-[11px] text-rose-400 font-semibold block mb-1">Search Block (Exact characters to replace)</label>
+                <textarea id="swe-patch-search" rows="5" placeholder="Paste exact target code block with matching indentation..." class="w-full bg-slate-950 border border-rose-900/50 rounded-lg p-2.5 text-xs text-rose-200 font-mono focus:border-rose-500 focus:outline-none"></textarea>
+              </div>
+              <div>
+                <label class="text-[11px] text-emerald-400 font-semibold block mb-1">Replace Block (New replacement snippet)</label>
+                <textarea id="swe-patch-replace" rows="5" placeholder="Paste new replacement code block..." class="w-full bg-slate-950 border border-emerald-900/50 rounded-lg p-2.5 text-xs text-emerald-200 font-mono focus:border-emerald-500 focus:outline-none"></textarea>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between pt-1">
+              <span class="text-xs text-slate-500">Atomic Search & Replace with safety validation</span>
+              <button onclick="applySearchReplacePatch()" id="btn-apply-patch" class="px-5 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs rounded-lg transition shadow-lg shadow-emerald-600/20 flex items-center gap-1.5">
+                <span>⚡</span> Apply Patch Block
+              </button>
+            </div>
+
+            <div id="swe-patch-output" class="bg-black border border-slate-800 rounded-xl p-3.5 text-emerald-400 font-mono text-xs max-h-48 overflow-y-auto whitespace-pre-wrap">Patch engine output will appear here.</div>
+          </div>
+
+          <!-- Fullstack Terminal Sandbox -->
+          <div class="glass-card rounded-2xl p-5 border border-indigo-900/40 space-y-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <h2 class="text-base font-bold text-white flex items-center gap-2">
+                  <span>🖥️</span> Full-Stack Execution Terminal & Build Sandbox
+                </h2>
+                <p class="text-xs text-slate-400">Run builds, dependency installs, tests, and database migrations (Node, Python, Docker, Prisma).</p>
+              </div>
+              <span class="px-2.5 py-1 rounded-full text-[10px] font-mono bg-indigo-950 text-indigo-400 border border-indigo-800">Persistent Shell</span>
+            </div>
+
+            <div class="flex flex-wrap gap-1.5 text-xs">
+              <button onclick="setTermCommand('npm run build')" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 rounded font-mono">npm run build</button>
+              <button onclick="setTermCommand('pytest tests/ -v')" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 rounded font-mono">pytest tests/</button>
+              <button onclick="setTermCommand('git status -s')" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 rounded font-mono">git status</button>
+              <button onclick="setTermCommand('git diff --stat')" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 rounded font-mono">git diff</button>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
+              <div class="sm:col-span-8">
+                <input type="text" id="swe-term-cmd" placeholder="npm run build || pytest || docker ps" value="git status -s" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3.5 py-2 text-xs text-white font-mono focus:border-cyan-500 focus:outline-none">
+              </div>
+              <div class="sm:col-span-4">
+                <input type="text" id="swe-term-cwd" placeholder="Working dir (optional)" value="" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white font-mono focus:border-cyan-500 focus:outline-none">
+              </div>
+            </div>
+
+            <div class="flex justify-end">
+              <button onclick="runTerminalCommand()" id="btn-run-terminal" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs rounded-lg transition flex items-center gap-1.5">
+                <span>▶️</span> Run in Terminal
+              </button>
+            </div>
+
+            <div id="swe-term-output" class="bg-black border border-slate-800 rounded-xl p-3.5 text-cyan-300 font-mono text-xs max-h-56 overflow-y-auto whitespace-pre-wrap">Terminal execution log will stream here.</div>
+          </div>
+        </div>
+
+        <!-- Right Column: Git Branching & PR Manager + DNA Memory -->
+        <div class="lg:col-span-5 space-y-6">
+
+          <!-- Isolated Branch & PR Suite -->
+          <div class="glass-card rounded-2xl p-5 border border-purple-900/40 space-y-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <h2 class="text-base font-bold text-white flex items-center gap-2">
+                  <span>🌿</span> Safe Branching & PR Suite
+                </h2>
+                <p class="text-xs text-slate-400">Eliminates Direct-to-Main hazard. Auto-branch, verify, and PR.</p>
+              </div>
+              <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-purple-950 text-purple-400 border border-purple-800">Render MCP</span>
+            </div>
+
+            <!-- Create Branch Section -->
+            <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-800 space-y-2">
+              <span class="text-xs font-semibold text-purple-300 block">1. Create Isolated Feature Branch</span>
+              <div class="grid grid-cols-2 gap-2">
+                <input type="text" id="swe-branch-repo" placeholder="Repo (e.g. ctf-agent-orchestrator)" value="ctf-agent-orchestrator" class="bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-white font-mono">
+                <input type="text" id="swe-branch-name" placeholder="Branch (e.g. ai/fix-issue-42)" value="ai/fix-feature-sandbox" class="bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-white font-mono">
+              </div>
+              <button onclick="createGitBranch()" id="btn-create-branch" class="w-full py-1.5 bg-purple-700 hover:bg-purple-600 text-white text-xs font-semibold rounded transition flex items-center justify-center gap-1">
+                <span>🌿</span> Create Branch on GitHub
+              </button>
+              <div id="swe-branch-output" class="text-[11px] font-mono text-slate-400 truncate"></div>
+            </div>
+
+            <!-- Create Pull Request Section -->
+            <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-800 space-y-2">
+              <span class="text-xs font-semibold text-cyan-300 block">2. Open Pull Request with Test Verification</span>
+              <input type="text" id="swe-pr-title" placeholder="PR Title (e.g. fix: patch CORS wildcard and add test)" value="fix(swe): patch file non-destructively and add terminal runner" class="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-white font-mono">
+              <textarea id="swe-pr-body" rows="3" placeholder="Summary of changes and test logs..." class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white font-mono">Automated patch applied via search-and-replace block. Local test build verified in fullstack terminal sandbox.</textarea>
+              <button onclick="createGitPR()" id="btn-create-pr" class="w-full py-1.5 bg-cyan-700 hover:bg-cyan-600 text-white text-xs font-semibold rounded transition flex items-center justify-center gap-1">
+                <span>🚀</span> Open GitHub Pull Request
+              </button>
+              <div id="swe-pr-output" class="text-[11px] font-mono text-cyan-400 whitespace-pre-wrap"></div>
+            </div>
+          </div>
+
+          <!-- DNA Knowledge Graph Architecture Memory -->
+          <div class="glass-card rounded-2xl p-5 border border-emerald-900/40 space-y-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <h2 class="text-base font-bold text-white flex items-center gap-2">
+                  <span>🧬</span> DNA Architecture Memory
+                </h2>
+                <p class="text-xs text-slate-400">Stores codebase relationships and dependency graph in DNA Knowledge Graph.</p>
+              </div>
+              <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-950 text-emerald-400 border border-emerald-800">HF DNA Graph</span>
+            </div>
+
+            <div class="space-y-2">
+              <div class="grid grid-cols-3 gap-1.5">
+                <input type="text" id="swe-mem-a" placeholder="server.py" value="server.py" class="bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-xs text-white font-mono">
+                <input type="text" id="swe-mem-rel" placeholder="depends_on" value="depends_on" class="bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-xs text-white font-mono">
+                <input type="text" id="swe-mem-b" placeholder="RenderMCP" value="RenderMCPGateway" class="bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-xs text-white font-mono">
+              </div>
+              <button onclick="syncCodebaseMemory()" id="btn-sync-mem" class="w-full py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-semibold rounded transition">
+                🧬 Sync Architecture Node
+              </button>
+            </div>
+
+            <div class="pt-2 border-t border-slate-800 space-y-2">
+              <div class="flex gap-2">
+                <input type="text" id="swe-mem-query" placeholder="Query architecture (e.g. server.py, CORS, Vercel)" value="server.py" class="flex-1 bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-white font-mono">
+                <button onclick="queryCodebaseMemory()" id="btn-query-mem" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold rounded transition">
+                  🔍 Search
+                </button>
+              </div>
+              <div id="swe-mem-output" class="bg-black border border-slate-800 rounded-xl p-2.5 text-emerald-300 font-mono text-[11px] max-h-36 overflow-y-auto whitespace-pre-wrap">Memory query output will appear here.</div>
+            </div>
+          </div>
+
+        </div>
+
       </div>
     </div>
 

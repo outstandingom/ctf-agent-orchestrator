@@ -114,6 +114,40 @@ class SymbolicRequest(BaseModel):
     target_var: Optional[str] = Field("flag", description="Target variable name to solve for")
     length: Optional[int] = Field(None, description="Length in bytes if solving for byte array")
 
+class CodePatchRequest(BaseModel):
+    path: str = Field(..., description="File path to patch (local or repo)")
+    search: str = Field(..., description="Exact code block to find and replace")
+    replace: str = Field(..., description="New replacement code block")
+    repo: Optional[str] = Field(None, description="GitHub repository name or 'local'")
+    branch: Optional[str] = Field("main", description="Branch name")
+    commit_message: Optional[str] = Field(None, description="Commit message")
+
+class GitHubBranchRequest(BaseModel):
+    repo: str = Field(..., description="GitHub repository name")
+    branch: str = Field(..., description="Branch name to create (e.g. ai/fix-issue-42)")
+    from_branch: Optional[str] = Field(None, description="Source branch to fork from")
+
+class GitHubPRRequest(BaseModel):
+    repo: str = Field(..., description="GitHub repository name")
+    title: str = Field(..., description="Pull Request title")
+    body: str = Field(..., description="Pull Request markdown body")
+    head: str = Field(..., description="Feature branch (e.g. ai/fix-issue-42)")
+    base: Optional[str] = Field("main", description="Target branch (default: main)")
+
+class TerminalRunRequest(BaseModel):
+    command: str = Field(..., description="Terminal command to execute (npm run build, pytest, etc.)")
+    cwd: Optional[str] = Field(None, description="Working directory")
+    timeout_seconds: Optional[int] = Field(60, description="Execution timeout in seconds")
+
+class MemorySyncRequest(BaseModel):
+    component_a: str = Field(..., description="Source architectural component")
+    relationship: Optional[str] = Field("depends_on", description="Relationship type")
+    component_b: str = Field(..., description="Target architectural component")
+    context: Optional[str] = Field("", description="Architectural notes or context")
+
+class MemoryQueryRequest(BaseModel):
+    query: str = Field(..., description="Search query for codebase memory")
+
 class WSLRequest(BaseModel):
     command: str = Field(..., description="Linux bash command to execute in WSL")
     timeout_seconds: Optional[int] = Field(15, description="Execution timeout in seconds")
