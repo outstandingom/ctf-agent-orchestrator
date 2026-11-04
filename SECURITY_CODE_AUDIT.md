@@ -38,6 +38,14 @@ The claims of an autonomous, integrated browser agent and a “5/5” benchmark 
 - The dynamic web-probe path uses `verify=False` for HTTPS requests, disabling certificate verification. That can make results vulnerable to interception and can mask TLS findings.
 - **Fix:** verify certificates by default; make any intentionally insecure lab mode explicit, opt-in, clearly labelled, and never use it for TLS validation.
 
+### High — CTFd attachment classification crashes on non-empty files (fixed on this branch)
+- On `main`, the entropy estimator calls `bit_length()` on a floating-point probability. Python floats do not provide that method, so attachment classification raises an exception for non-empty downloads.
+- **Remediation on this branch:** calculate Shannon entropy using `math.log2` and `Counter`, avoiding the exception and repeated full-file scans.
+
+### Medium — low-exponent RSA cube root loses precision on larger values (fixed on this branch)
+- On `main`, the (e=3) attack uses `c ** (1/3)` floating-point arithmetic. This loses integer precision for sufficiently large ciphertexts and can miss valid textbook low-exponent recoveries.
+- **Remediation on this branch:** use an integer-only cube-root routine and verify that the candidate's exact cube matches the ciphertext; a regression case was added to the engine test script.
+
 ### High — benchmark does not substantiate competition performance
 - `scripts/benchmark_ctf.py` inserts the flag directly into a synthetic HTTP header and PNG metadata, then searches for the flag in raw bytes as a fallback. That tests string extraction more than PCAP parsing or steganography.
 - The benchmark imports from a hardcoded `C:\Users\SGI\Downloads\ctf-agent-orchestrator` path, so it is not portable.
@@ -64,6 +72,7 @@ The claims of an autonomous, integrated browser agent and a “5/5” benchmark 
 - Restricted CORS to explicit configured origins and disabled credentialed CORS.
 - Expanded `.gitignore` for local environment and runtime artifacts.
 - Fixed RSA tool selection so plain RSA prompts include the advanced crypto solver; added tool-selector regression tests.
+- Fixed CTFd attachment entropy calculation and low-exponent RSA cube-root precision; added a large-integer regression case.
 - Replaced machine-specific Windows paths in the two reviewed benchmark/test scripts with paths relative to the script. (The benchmark's weak assertions and synthetic challenge design still need redesign.)
 - Added security notes to the README.
 
@@ -76,7 +85,7 @@ These changes are **not merged into `main`**. They do not fix every critical iss
 3. Run secret scanning and dependency scanning.
 4. Add API auth/authorization and sandbox isolation before exposing any dangerous endpoint.
 5. Replace the benchmark's hardcoded path and weak assertions; run the suite on a clean machine.
-6. Run `python -m unittest scripts.test_tool_selector` and add tests for malformed solver inputs, URL/IP allowlists, upload limits, and authentication.
+6. Run `python -m unittest scripts.test_tool_selector` and `python scripts/test_top01_engines.py`; add tests for malformed solver inputs, URL/IP allowlists, upload limits, and authentication.
 7. Verify the real TCS HackQuest rules before using any automation against the live competition.
 
 ## Bottom line
