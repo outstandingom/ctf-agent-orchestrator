@@ -1,10 +1,112 @@
 # 🤖 CTF AI Orchestrator Command Center (v2.0)
 
-An autonomous cybersecurity copilot, CTF solver engine, and real-time command center built for high-stakes cybersecurity competitions (such as **TCS HackQuest, PicoCTF, and Google CTF**).
+An autonomous cybersecurity copilot, CTF solver engine, SWE developer agent, and real-time command center built for high-stakes cybersecurity competitions (**TCS HackQuest, PicoCTF, Google CTF**) and automated software engineering.
 
-Combines ultra-fast LPU inference (Groq), automated SMT theorem proving (`z3-solver`), dynamic web fuzzing with differential testing, cryptographic analysis (`pycryptodome`, `sympy`), PRNG state recovery (`randcrack`), network PCAP stream carving (`scapy`), WSL2 Linux binary analysis, and CTFd competition management.
+Combines ultra-fast LPU inference (Groq), automated SMT theorem proving (`z3-solver`), dynamic web fuzzing with differential testing, cryptographic attacks (Wiener, Pollard $p-1$, Fermat), PRNG state recovery (`randcrack`), network PCAP stream carving (`scapy`), WSL2 Linux binary analysis, CTFd competition monitoring, and Playwright browser DOM/memory manipulation.
 
-📖 **For the full in-depth user and developer manual, see [COMPLETE_USER_GUIDE.md](docs/COMPLETE_USER_GUIDE.md).**
+📖 **For the detailed developer reference, see [docs/COMPLETE_USER_GUIDE.md](docs/COMPLETE_USER_GUIDE.md) and [docs/MASTER_SYSTEM_ARCHITECTURE.md](docs/MASTER_SYSTEM_ARCHITECTURE.md).**
+
+---
+
+## ⚡ 1-Click Automated Setup (Zero Configuration)
+
+### 🪟 Windows (1-Click)
+Simply double-click or run from PowerShell:
+```cmd
+start.bat
+```
+`start.bat` will automatically:
+1. Verify Python 3.10+ installation.
+2. Auto-initialize `.env` from `.env.example` if not already present.
+3. Automatically clone the companion **Forensic Engine** (`outstandingom/forensic`) into `..\forensic` if missing.
+4. Install all Python dependencies from `requirements.txt` (`z3-solver`, `sympy`, `scapy`, `pycryptodome`, etc.).
+5. Launch the Command Center on port 8080 and automatically open your default browser to **[http://localhost:8080/](http://localhost:8080/)**.
+
+### 🐧 Linux / macOS / WSL (1-Click)
+```bash
+chmod +x start.sh
+./start.sh
+```
+
+---
+
+## ⚙️ Manual Setup & Environment Configuration
+
+If you prefer setting up manually or running in a container:
+
+### 1. Clone & Install Dependencies
+```bash
+git clone https://github.com/outstandingom/ctf-agent-orchestrator.git
+cd ctf-agent-orchestrator
+
+# Clone companion forensic engine into parent directory (optional but recommended)
+git clone https://github.com/outstandingom/forensic.git ../forensic
+
+# Install complete requirement suite
+pip install -r requirements.txt
+```
+
+### 2. Configure Environment Variables (`.env`)
+Copy the example template:
+```bash
+cp .env.example .env
+```
+Edit `.env` with your preferred settings:
+```env
+# LLM Provider: "groq" (fastest, free tier available) or "anthropic"
+LLM_PROVIDER=groq
+
+# Groq Configuration (Get free key at https://console.groq.com)
+GROQ_API_KEY=gsk_your_groq_api_key_here
+GROQ_MODEL=qwen/qwen3.8-27b
+
+# Anthropic Configuration (Optional)
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
+CLAUDE_MODEL=claude-3-5-sonnet-20241022
+
+# Dashboard Port
+DASHBOARD_PORT=8080
+
+# External Cloud Gateways (Configured by default)
+HF_VECTOR_URL=https://outstandingom-vector.hf.space
+HF_KNOWLEDGE_URL=https://outstandingom-knowledge-graph-env.hf.space
+MCP_SERVER_URL=https://mcp-server-2sl7.onrender.com
+MCP_API_KEY=outstandingom_mcp_2026hjfbechjbdhjjfbnkqjkj
+```
+
+### 3. Launch the Server
+```bash
+python server.py
+# Or using uvicorn directly:
+python -m uvicorn server:app --host 0.0.0.0 --port 8080
+```
+Open **[http://localhost:8080](http://localhost:8080)** in your browser.
+
+---
+
+## 🌐 Browser Automation & Playwright MCP Setup
+
+The agent includes integration with the **Playwright MCP Server** for client-side exploitation, DOM inspection, and DevTools memory tampering (`window`, `localStorage`, `sessionStorage`):
+
+1. **Token Configuration**: The Playwright extension connects via the standard token:
+   ```json
+   "PLAYWRIGHT_MCP_EXTENSION_TOKEN": "ZmFHIloaoXil8UmO0kL6qikaZihZPrX91kvteBn92N4"
+   ```
+2. **Global MCP Config**: Configured in `~/.claude.json` or Antigravity's global `mcp_config.json`:
+   ```json
+   "playwright": {
+     "command": "npx",
+     "args": ["-y", "@automata/playwright-mcp-server@latest"],
+     "env": {
+       "PLAYWRIGHT_MCP_EXTENSION_TOKEN": "ZmFHIloaoXil8UmO0kL6qikaZihZPrX91kvteBn92N4"
+     }
+   }
+   ```
+3. **Capabilities**:
+   * `browser_navigate`: Open challenge URLs headlessly.
+   * `browser_snapshot`: Read the full DOM tree and form element refs.
+   * `browser_evaluate`: Read or tamper with client-side JavaScript memory (`window.__VAULT_SESSION`).
+   * `browser_take_screenshot`: Capture visual confirmation of challenge state.
 
 ---
 
@@ -27,7 +129,7 @@ Combines ultra-fast LPU inference (Groq), automated SMT theorem proving (`z3-sol
 ┌──────────────────┐               ┌──────────────────┐                 ┌──────────────────┐
 │ Hugging Face     │               │ Python 3.15      │                 │ Render GitHub    │
 │ ZeroGPU RAG      │               │ Sandbox Engine   │                 │ MCP Gateway      │
-│ & DNA Graph      │               │ (Z3, PyCrypto)   │                 │ (Remote Micro)   │
+│ & DNA Graph      │               │ (Z3, SymPy, LLL) │                 │ (Safe Branch/PR) │
 └──────────────────┘               └────────┬─────────┘                 └──────────────────┘
                                             │
           ┌─────────────────────────────────┼─────────────────────────────────┐
@@ -40,125 +142,85 @@ Combines ultra-fast LPU inference (Groq), automated SMT theorem proving (`z3-sol
           │                                 │                                 │
           ▼                                 ▼                                 ▼
 ┌──────────────────────┐         ┌──────────────────────┐          ┌──────────────────────┐
-│ CTFd Autopilot       │         │ Interactive TCP      │          │ Forensics Engine     │
-│ Manager (REST v1)    │         │ Netcat Socket Probe  │          │ (Scapy PCAP + Stego) │
+│ CTFd Autopilot       │         │ Advanced Crypto Suite│          │ Forensic Engine      │
+│ Speed Listener       │         │ (Wiener/Pollard/RSA) │          │ (Scapy PCAP + Stego) │
 └──────────────────────┘         └──────────────────────┘          └──────────────────────┘
 ```
 
 ---
 
-## 🚀 Key Engines & Capabilities
+## 🛠️ Specialized Tool Inventory
 
-1. **🚀 Dynamic Web Fuzzing Engine (`web_dynamic_fuzzer`)**:
-   - Differential baseline testing for SQLi, SSTI, Command Injection, Path Traversal, Auth Bypass, and IDOR.
-   - Detects timing delays ($\Delta t > 2.0\text{s}$), response length variances, and leaks.
-   - Automatically queries ZeroGPU Vector RAG and syncs findings to the DNA Knowledge Graph.
-2. **🧮 Z3 Symbolic SMT Solver (`symbolic_execution_solver`)**:
-   - Solves crackme branch conditions, bitwise XOR equations, and modular arithmetic in `<0.6s`.
-   - Automatically decodes BitVec byte constraints into printable ASCII flag strings.
-3. **🐧 WSL2 Linux Subsystem Bridge (`wsl_linux_bridge`)**:
-   - Directly executes `checksec`, `readelf`, strings, and Linux exploit scripts in native WSL2 Ubuntu.
-4. **🔍 Forensic Network Dissector (`pcap_analyzer.py`)**:
-   - Reassembles TCP streams, carves multipart file uploads, extracts HTTP Basic/Bearer auth tokens, and detects DNS query exfiltration using Scapy.
-5. **⚡ Ponytail Token Optimization Engine**:
-   - Dynamic domain tool selection slashes schema tokens from **2,687 down to 664 tokens (-75.3%)**.
-   - Solves multi-turn challenges in **46 seconds** (65.2% faster) with zero Groq 429 rate limit delays.
+| Tool Name | Subsystem | Functionality |
+| :--- | :--- | :--- |
+| **`advanced_crypto_solver`** | Cryptography | Automated Wiener attack ($d < N^{0.25}$), Pollard $p-1$ factoring (Montgomery Stage 1), Fermat factoring for close primes, small-$e$ attacks. |
+| **`symbolic_execution_solver`** | Reversing | Z3 SMT solver with 8-bit `BitVec` modeling for non-linear constraint equations, passcodes, and crackmes. |
+| **`pwn_crash_triage`** | Binary Exploitation | Dynamic GDB crash runner: parses SIGSEGV/SIGILL, catches 16-byte `movaps` RSP stack misalignment, calculates De Bruijn cyclic offsets, logs patterns to DNA graph. |
+| **`ctfd_speed_listener`** | Competition Speed | Background polling watcher for CTFd platforms. Detects newly dropped challenges, downloads attachments, and classifies file types/packers (UPX, PyInstaller, ELF, PCAP). |
+| **`run_forensics_inspection`** | Forensics | Invokes the Forensic Engine (11 extractors): PCAP TCP stream reassembly, multipart file carving, DNS exfil detection, and image LSB steganography. |
+| **`patch_file_diff`** | SWE / Bug Fixing | Non-destructive search-and-replace patching engine. Replaces exact code blocks without truncating or corrupting files. |
+| **`create_github_branch` / `pr`** | Safe Engineering | Creates isolated git branches and opens Pull Requests via Render MCP Gateway to avoid direct-to-main hazards. |
+| **`run_fullstack_terminal`** | Terminal Sandbox | Persistent terminal runner with timeout, custom `cwd`, and exit code validation (`npm run build`, `pytest`, `docker`). |
 
 ---
 
-## ⚡ Quickstart
+## 🧪 Testing & Verification Playbooks
 
-### 1. Installation
+Run the built-in test suites to verify that all systems are operational:
 
+### 1. Top 0.1% Tool Engine Verification (5/5 Tests)
 ```bash
-git clone https://github.com/outstandingom/ctf-agent-orchestrator.git
-cd ctf-agent-orchestrator
-pip install -r requirements.txt
-pip install z3-solver pycryptodome sympy randcrack mpmath scapy
+python scripts/test_top01_engines.py
 ```
+Validates Wiener attack factoring, Pollard $p-1$ factoring, Fermat factoring, CTFd speed listener error handling, and PWN crash triage structure.
 
-### 2. Configuration (.env)
-
-```env
-LLM_PROVIDER=groq
-GROQ_API_KEY=gsk_your_groq_api_key
-GROQ_MODEL=qwen/qwen3.8-27b
-DASHBOARD_PORT=8080
-
-# External Gateways
-HF_VECTOR_URL=https://outstandingom-vector.hf.space
-HF_KNOWLEDGE_URL=https://outstandingom-knowledge-graph-env.hf.space
-MCP_SERVER_URL=https://mcp-server-2sl7.onrender.com
-MCP_API_KEY=outstandingom_mcp_2026hjfbechjbdhjjfbnkqjkj
-```
-
-### 3. Launching the Command Center
-
+### 2. Forensic Engine Health Check (11/11 Extractors)
 ```bash
-# Windows 1-Click Launcher
-start.bat
-
-# Or manual startup
-python server.py
+python scripts/test_forensic_engine.py
 ```
-Open **[http://localhost:8080](http://localhost:8080)** in your browser.
+Validates all 11 forensic extractors including PCAP analysis, EXIF, Steganography, PDF revisions, and ELA.
+
+### 3. Full HackQuest CTF Benchmark Suite
+```bash
+python scripts/benchmark_ctf.py
+```
+Runs an end-to-end multi-tier CTF evaluation (XOR crypto, Weak RSA Wiener, PCAP network hunt, PNG steganography, Fermat RSA) with automated accuracy scoring.
+
+### 4. Interactive Google CTF Quantum Vault Challenge
+Launch the local multi-tier benchmark challenge:
+```bash
+python challenges/quantum_vault/app.py
+```
+Challenge will be live on **http://127.0.0.1:8088/**.
 
 ---
 
-## 🎯 Verified Test Playbooks
+## 📡 REST API Reference
 
-* **Google CTF Web Preset (Client-Side Timer Bypass)**:
-  ```bash
-  python scripts/test_google_ctf_preset.py
-  ```
-* **Google CTF Cryptography Preset (PRNG Time-Seed Cracker)**:
-  ```bash
-  python scripts/test_google_ctf_crypto.py
-  ```
+The Command Center backend exposes direct REST endpoints for all tools:
+
+* `GET /api/status` — System health check and cloud gateway connectivity.
+* `POST /api/crypto/solve` — Dispatches Wiener, Pollard, Fermat, and small-$e$ attacks (`{"attack": "wiener", "n": "...", "e": "...", "c": "..."}`).
+* `POST /api/pwn/triage` — Dispatches binary crash analysis (`{"binary_path": "...", "use_cyclic": true}`).
+* `POST /api/ctfd/listen` — Watches CTFd platform for new challenges (`{"ctfd_url": "...", "poll_interval_s": 5}`).
+* `POST /api/symbolic/solve` — Runs Z3 constraint solving on provided equations (`{"constraints": "..."}`).
+* `POST /api/code/patch` — Non-destructive search-and-replace patching (`{"path": "...", "search": "...", "replace": "..."}`).
+* `POST /api/terminal/run` — Executes commands in the persistent terminal sandbox (`{"command": "..."}`).
+
+---
+
+## 📄 Documentation Exports
+
+Full architecture reports are available in multiple formats:
+* Markdown Source: [`docs/MASTER_SYSTEM_ARCHITECTURE.md`](docs/MASTER_SYSTEM_ARCHITECTURE.md)
+* Word Document: [`docs/SYSTEM_VERIFICATION_REPORT.docx`](docs/SYSTEM_VERIFICATION_REPORT.docx)
+* Printable PDF: [`docs/SYSTEM_VERIFICATION_REPORT.pdf`](docs/SYSTEM_VERIFICATION_REPORT.pdf)
+
+To regenerate `.docx` and `.pdf` files from markdown:
+```bash
+python scripts/convert_docs.py
+```
 
 ---
 
 *Authored by Om Uikey — CTF AI Orchestrator Core Maintainer*
-
----
-
-## 🛠️ Autonomous SWE & Full-Stack Deployment Studio
-
-In addition to cybersecurity CTF operations, the platform now functions as an **Autonomous Software Engineering (SWE) and Deployment Agent** capable of analyzing codebases, applying non-destructive surgical patches, executing full-stack build/test verification, and orchestrating safe Git pull-request workflows from a single prompt:
-
-### 1. The "Full-File Overwrite" Flaw Eliminated (`patch_file_diff`)
-* **The Problem**: Conventional AI agents overwrite whole 600+ line files when fixing a minor bug (e.g. CORS configuration), routinely dropping helper functions or truncating middle code blocks (`# ... rest of code remains the same`).
-* **The Solution**: The engine emits targeted **Search-and-Replace Blocks**:
-  ```json
-  {
-    "path": "server.py",
-    "search": "allow_origins=['*']",
-    "replace": "allow_origins=os.getenv('CORS_ORIGINS', '*').split(',')",
-    "branch": "ai/fix-cors-wildcard",
-    "commit_message": "fix(cors): restrict wildcard origins to environment configuration"
-  }
-  ```
-  The patch engine validates exact matching of whitespace, indentation, and characters before applying changes, guaranteeing complete preservation of surrounding code.
-
-### 2. Direct-to-Main Git Hazard Eliminated (`create_github_branch` & `create_github_pr`)
-* **The Problem**: Autonomous agents committing directly to `main` break live production environments and trigger broken CI/CD pipelines.
-* **The Solution**: Safe GitHub engineering workflows via the Render MCP Gateway:
-  1. Auto-create isolated feature branch: `create_github_branch(branch="ai/fix-cors-42")`
-  2. Apply non-destructive patch to the branch: `patch_file_diff(...)`
-  3. Run local build and regression tests in the sandbox.
-  4. Open a Pull Request with summary and test verification logs: `create_github_pr(...)`
-
-### 3. Persistent Full-Stack Terminal & Build Sandbox (`run_fullstack_terminal`)
-* Generalizes beyond simple single-script Python runs to persistent terminal execution across modern technology stacks:
-  * **Frontend & Asset Builds**: `npm install`, `npm run build`, `vite build`
-  * **Database Migrations**: `alembic upgrade head`, `npx prisma db push`
-  * **Test Suites & Quality Checks**: `pytest tests/ -v`, `npm test`
-  * **Container Management**: `docker-compose up -d`, `docker ps`
-  * Captures exit codes, stdout, stderr, execution duration, and supports custom working directory (`cwd`).
-
-### 4. Codebase Architecture Memory (DNA Knowledge Graph)
-* Tracks architectural relationships, API routes, database schemas, and cloud deployment mappings using the Hugging Face DNA Knowledge Graph (`https://outstandingom-knowledge-graph-env.hf.space`):
-  * `Component -> Imports -> Module`
-  * `Endpoint -> HandledBy -> Controller`
-  * `Service -> DeployedOn -> Vercel/Render`
-* Exposes `sync_codebase_memory` and `query_codebase_memory` with instant local persistent fallback so project context is remembered across multi-turn sessions.

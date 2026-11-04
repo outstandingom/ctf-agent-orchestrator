@@ -1,8 +1,35 @@
+# =========================================================================
+# CTF AI Orchestrator Dependencies
+# =========================================================================
+
+# Core Framework & Asynchronous API Server
 fastapi>=0.115.0
 uvicorn>=0.30.0
-requests>=2.31.0
-python-dotenv>=1.0.0
-openai>=1.30.0
-anthropic>=0.25.0
 pydantic>=2.7.0
 python-multipart>=0.0.9
+requests>=2.31.0
+httpx>=0.27.0
+python-dotenv>=1.0.0
+
+# LLM Providers (Groq & Anthropic)
+openai>=1.30.0
+anthropic>=0.25.0
+
+# CTF Cryptography, SMT Solvers & Discrete Mathematics
+z3-solver>=4.12.0
+pycryptodome>=3.20.0
+sympy>=1.12
+randcrack>=0.1.7
+numpy>=1.26.0
+scipy>=1.12.0
+
+# Forensics, Network Dissection & Web Fuzzing
+scapy>=2.5.0
+beautifulsoup4>=4.12.0
+jinja2>=3.1.0
+
+# Documentation & Report Export Pipeline
+python-docx>=1.1.0
+reportlab>=4.0.0
+markdown>=3.6
+pillow>=10.0.0

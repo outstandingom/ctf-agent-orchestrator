@@ -40,20 +40,22 @@ SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "sb_publishable_0Qoicwxg64tkF
 # =========================================================================
 def get_forensic_dir() -> str:
     r"""
-    Controlled path resolver for the Forensic Engine.
-    Prioritizes the exact local installation at c:\Users\SGI\Downloads\forensic
-    while safely supporting environment overrides and relative fallbacks.
+    Universal path resolver for the Forensic Engine.
+    Discovers local installation across parent directories, relative workspace paths,
+    environment overrides, and standard developer paths.
     """
     candidates = [
-        r"c:\Users\SGI\Downloads\forensic",
         os.getenv("FORENSIC_DIR", ""),
         os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "forensic"),
-        os.path.join(os.getcwd(), "forensic")
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "forensic"),
+        os.path.join(os.getcwd(), "forensic"),
+        r"c:\Users\SGI\Downloads\forensic"
     ]
     for p in candidates:
         if p and os.path.exists(p):
-            return p
-    return r"c:\Users\SGI\Downloads\forensic"
+            return os.path.abspath(p)
+    # Default relative fallback for portable multi-user setups
+    return os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "forensic"))
 
 # =========================================================================
 # MULTI-TURN SESSION MEMORY

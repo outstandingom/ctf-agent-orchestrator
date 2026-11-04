@@ -1,6 +1,6 @@
 @echo off
 setlocal enabledelayedexpansion
-title CTF AI Orchestrator — Automated Launcher & Setup Manager
+title CTF AI Orchestrator — 1-Click Automated Launcher
 color 0b
 
 :: Change working directory to script location
@@ -13,41 +13,101 @@ echo ^| ^|    ^| ^|  ^| ^|_     / _ \  ^| ^|  ^| ^| ^| ^| '__/ __^| '_ \ / _ \/ 
 echo ^| ^|_   ^| ^|  ^|  _^|   / ___ \ ^| ^|  ^| ^|_^| ^| ^| ^| (__^| ^| ^| ^|  __/\__ \ ^|_^| ^| ^| (_) ^|
 echo  \___^| ^|_^|  ^|_^|    /_/   \_\___^|  \___/^|_^|  \___^|_^| ^|_^|\___^|^|___/\__^|_^|  \___/ 
 echo                                                                               
-echo               Unified Autonomous Command Center (v2.0)
+echo          1-Click Automated Setup & Launch Command Center (v2.0)
 echo ========================================================================
 echo.
 
-:: 1. Check Python Availability
+:: 1. Verify Python Installation
 python --version >nul 2>&1
 if %errorlevel% neq 0 (
     color 0c
-    echo [ERROR] Python is not found in your system PATH!
+    echo [ERROR] Python is not installed or not in your system PATH!
     echo Please install Python 3.10+ from https://www.python.org/
-    echo Make sure to check "Add Python to PATH" during installation.
+    echo Ensure "Add Python to PATH" is checked during installation.
     echo.
     pause
     exit /b 1
 )
 
-:: 2. Check Git Availability
-git --version >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [WARNING] Git was not found in PATH.
-    echo Repository cloning will be disabled until Git is installed.
-    echo.
-)
+for /f "tokens=*" %%v in ('python --version 2^>^&1') do set "PY_VER=%%v"
+echo [1/5] Python Environment: %PY_VER% (OK)
 
-:: 3. Launch Interactive Python Setup & Launcher Wizard
-if exist "scripts\setup_wizard.py" (
-    python scripts\setup_wizard.py %*
+:: 2. Auto-initialize .env if missing
+if not exist ".env" (
+    if exist ".env.example" (
+        echo [2/5] Creating .env from .env.example...
+        copy /y ".env.example" ".env" >nul
+        echo       .env file created! (Configure your GROQ_API_KEY if needed).
+    ) else (
+        echo [2/5] Creating default .env configuration...
+        (
+            echo LLM_PROVIDER=groq
+            echo GROQ_API_KEY=
+            echo GROQ_MODEL=qwen/qwen3.8-27b
+            echo ANTHROPIC_API_KEY=
+            echo CLAUDE_MODEL=claude-3-5-sonnet-20241022
+            echo DASHBOARD_PORT=8080
+            echo HF_VECTOR_URL=https://outstandingom-vector.hf.space
+            echo HF_KNOWLEDGE_URL=https://outstandingom-knowledge-graph-env.hf.space
+            echo MCP_SERVER_URL=https://mcp-server-2sl7.onrender.com
+            echo MCP_API_KEY=outstandingom_mcp_2026hjfbechjbdhjjfbnkqjkj
+            echo SUPABASE_URL=https://vtlmgubzcktztkuymtir.supabase.co
+            echo SUPABASE_ANON_KEY=sb_publishable_0Qoicwxg64tkFReoDSKJ3g_dOSZJPCE
+        ) > ".env"
+    )
 ) else (
-    echo [INFO] Launching server directly on port 8080...
-    python -m uvicorn server:app --host 0.0.0.0 --port 8080
+    echo [2/5] Environment File: .env found (OK)
 )
 
-if %errorlevel% neq 0 (
-    echo.
-    echo [INFO] Process finished with exit code %errorlevel%.
+:: 3. Auto-clone Companion Forensic Engine if missing
+set "FORENSIC_FOUND=0"
+if exist "..\forensic\forensic_engine" set "FORENSIC_FOUND=1"
+if exist "forensic\forensic_engine" set "FORENSIC_FOUND=1"
+if exist "C:\Users\SGI\Downloads\forensic\forensic_engine" set "FORENSIC_FOUND=1"
+
+if "%FORENSIC_FOUND%"=="0" (
+    echo [3/5] Companion Forensic Engine not detected. Checking git...
+    git --version >nul 2>&1
+    if %errorlevel% equ 0 (
+        echo       Auto-cloning Forensic Engine into ..\forensic ...
+        git clone --depth 1 https://github.com/outstandingom/forensic.git "..\forensic"
+        if %errorlevel% equ 0 (
+            echo       Forensic Engine cloned successfully!
+        ) else (
+            echo       [WARNING] Could not clone forensic engine automatically.
+        )
+    ) else (
+        echo       [WARNING] Git is not installed. Forensic engine must be manually placed at ..\forensic
+    )
+) else (
+    echo [3/5] Forensic Engine: Repository present (OK)
 )
+
+:: 4. Verify & Install Python Dependencies
+echo [4/5] Verifying dependencies from requirements.txt...
+python -m pip install -r requirements.txt --quiet
+if %errorlevel% neq 0 (
+    echo       [WARNING] Some packages failed to install. Running verbose install...
+    python -m pip install -r requirements.txt
+) else (
+    echo       All dependencies verified and ready! (OK)
+)
+
+:: 5. Launch Dashboard & Server
+echo [5/5] Starting Command Center on port 8080...
+echo.
+echo ========================================================================
+echo   CTF AI Orchestrator Command Center Live!
+echo   Dashboard URL : http://localhost:8080/
+echo   API Docs      : http://localhost:8080/docs
+echo   Quantum Vault : http://localhost:8088/
+echo ========================================================================
+echo.
+
+:: Automatically open browser
+start http://localhost:8080/
+
+:: Start the FastAPI / Uvicorn server
+python -m uvicorn server:app --host 0.0.0.0 --port 8080
 
 endlocal

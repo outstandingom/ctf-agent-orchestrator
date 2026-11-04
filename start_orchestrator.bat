@@ -2,7 +2,7 @@
 title CTF AI Orchestrator - Local KeepAlive Runner
 color 0a
 
-cd /d "c:\Users\SGI\Downloads\ctf-agent-orchestrator"
+cd /d "%~dp0"
 
 :loop
 echo =======================================================
