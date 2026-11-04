@@ -8,7 +8,7 @@ Tests:
   5. pwn_crash_triage       - returns structure even without WSL binary
 """
 import sys, os, json
-sys.path.insert(0, r"c:\Users\SGI\Downloads\ctf-agent-orchestrator")
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from agent import execute_tool
 
 PASS = 0
