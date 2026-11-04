@@ -30,6 +30,16 @@ chmod +x start.sh
 
 ---
 
+## 🔐 Security Notes (Read Before Running)
+
+- Treat this project as a **local research prototype**, not a production or internet-facing service.
+- Keep the API bound to `127.0.0.1`. Do not use `--host 0.0.0.0` unless you have implemented authentication, authorization, network restrictions, and an isolated execution environment.
+- Set `MCP_API_KEY` and any LLM keys only in your local `.env`; never place them in frontend JavaScript, README examples, screenshots, or commits. If a credential was previously committed, rotate it: removing it from the current files does not remove it from Git history.
+- The Python sandbox and WSL/terminal tools execute caller-supplied code or commands. They are **not a secure sandbox** merely because a timeout is set. Do not expose these endpoints to untrusted users.
+- Web fuzzing, socket probing, and CTFd operations can send traffic or submit flags. Use only targets and actions explicitly authorized by their owners and the event rules.
+- The CORS allowlist is empty by default. If a separately hosted frontend is needed, set `CORS_ORIGINS` to exact trusted origins, comma-separated. CORS is not authentication.
+- Before production use, add API authentication/authorization, per-route permissions, SSRF and target allowlists, upload size/type limits, process/container isolation, resource quotas, audit logging, and automated security tests.
+
 ## ⚙️ Manual Setup & Environment Configuration
 
 If you prefer setting up manually or running in a container:
