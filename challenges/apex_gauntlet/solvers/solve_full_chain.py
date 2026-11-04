@@ -42,19 +42,52 @@ def solve_chain():
     start_time = time.time()
 
     # ---------------------------------------------------------
-    # STAGE 1: Client DOM & Memory State Extraction
+    # STAGE 1: Client DOM & Memory State Extraction (Playwright Browser)
     # ---------------------------------------------------------
-    log(1, "BROWSER MEMORY & DOM EXTRACTION", f"Connecting to {TARGET_BASE}/")
-    req = urllib.request.Request(f"{TARGET_BASE}/")
-    with urllib.request.urlopen(req, timeout=10) as resp:
-        html_content = resp.read().decode("utf-8")
+    log(1, "BROWSER MEMORY & PLAYWRIGHT DOM EXTRACTION", f"Launching headless Chromium against {TARGET_BASE}/")
+    stage1_token = None
+    artifacts_dir = REPO_ROOT / "challenges" / "apex_gauntlet" / "artifacts"
+    artifacts_dir.mkdir(parents=True, exist_ok=True)
+    screenshot_path = artifacts_dir / "apex_gauntlet_playwright_capture.png"
 
-    # Extract session token from DOM attribute or inline JS window.__APEX_SHIELD
-    token_match = re.search(r'data-token="([^"]+)"', html_content) or re.search(r'session_token:\s*"([^"]+)"', html_content)
-    if not token_match:
+    try:
+        from playwright.sync_api import sync_playwright
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            page = browser.new_page()
+            
+            # Hook console logs
+            console_logs = []
+            page.on("console", lambda msg: console_logs.append(msg.text))
+            
+            page.goto(f"{TARGET_BASE}/", timeout=15000)
+            page.wait_for_timeout(1000)  # Allow canvas matrix to initialize
+            
+            # Extract session token directly from live browser memory
+            shield_data = page.evaluate("() => window.__APEX_SHIELD")
+            if shield_data and isinstance(shield_data, dict):
+                stage1_token = shield_data.get("session_token")
+                print(f"[+] [PLAYWRIGHT] Memory Shield Object: {json.dumps(shield_data)}")
+
+            # Capture evidence screenshot
+            page.screenshot(path=str(screenshot_path))
+            print(f"[+] [PLAYWRIGHT] Captured live browser screenshot: {screenshot_path}")
+            if console_logs:
+                print(f"[+] [PLAYWRIGHT] Intercepted Console Log: {console_logs[0]}")
+            
+            browser.close()
+    except Exception as pw_err:
+        print(f"[!] Playwright browser error ({pw_err}), falling back to HTTP DOM parser...")
+        req = urllib.request.Request(f"{TARGET_BASE}/")
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            html_content = resp.read().decode("utf-8")
+        token_match = re.search(r'data-token="([^"]+)"', html_content) or re.search(r'session_token:\s*"([^"]+)"', html_content)
+        if token_match:
+            stage1_token = token_match.group(1)
+
+    if not stage1_token:
         raise RuntimeError("[-] Stage 1 Failed: Unable to extract session_token from DOM or memory state")
     
-    stage1_token = token_match.group(1)
     print(f"[+] [SUCCESS] Stage 1 Token Captured: {stage1_token}")
 
     # ---------------------------------------------------------
