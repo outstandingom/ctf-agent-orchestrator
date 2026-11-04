@@ -108,6 +108,6 @@ echo.
 start http://localhost:8080/
 
 :: Start the FastAPI / Uvicorn server
-python -m uvicorn server:app --host 0.0.0.0 --port 8080
+python -m uvicorn server:app --host 127.0.0.1 --port 8080
 
 endlocal

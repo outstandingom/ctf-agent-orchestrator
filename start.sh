@@ -81,4 +81,4 @@ elif command -v open &> /dev/null; then
     open "http://localhost:8080/" &> /dev/null &
 fi
 
-python3 -m uvicorn server:app --host 0.0.0.0 --port 8080
+python3 -m uvicorn server:app --host 127.0.0.1 --port 8080

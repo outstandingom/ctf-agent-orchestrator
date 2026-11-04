@@ -584,4 +584,5 @@ if __name__ == "__main__":
     print(f"\n=======================================================")
     print(f"🚀 CTF AI Orchestrator Command Center Live on http://localhost:{port}")
     print(f"=======================================================\n")
-    uvicorn.run("server:app", host="0.0.0.0", port=port, reload=True)
+    host_bind = os.getenv("HOST", "127.0.0.1")
+    uvicorn.run("server:app", host=host_bind, port=port, reload=True)
