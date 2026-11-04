@@ -234,12 +234,25 @@ def markdown_to_pdf(md_path: str, pdf_path: str):
 
 if __name__ == "__main__":
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    md_file = os.path.join(base_dir, "docs", "MASTER_SYSTEM_ARCHITECTURE.md")
-    docx_file = os.path.join(base_dir, "docs", "MASTER_SYSTEM_ARCHITECTURE.docx")
-    pdf_file = os.path.join(base_dir, "docs", "MASTER_SYSTEM_ARCHITECTURE.pdf")
+    docs_dir = os.path.join(base_dir, "docs")
+    
+    target_reports = [
+        "MASTER_SYSTEM_ARCHITECTURE.md",
+        "APEX_GAUNTLET_COMPREHENSIVE_BENCHMARK_REPORT.md",
+        "FULL_SYSTEM_VERIFICATION_AND_BENCHMARK_REPORT.md",
+        "GOOGLE_CTF_REPLICATION_AND_BROWSER_EXPLOIT_REPORT.md",
+        "CTF_ORCHESTRATOR_HONEST_AUDIT.md"
+    ]
 
-    if os.path.exists(md_file):
-        markdown_to_docx(md_file, docx_file)
-        markdown_to_pdf(md_file, pdf_file)
-    else:
-        print(f"Error: {md_file} not found")
+    for report_name in target_reports:
+        md_file = os.path.join(docs_dir, report_name)
+        base_name = os.path.splitext(report_name)[0]
+        docx_file = os.path.join(docs_dir, f"{base_name}.docx")
+        pdf_file = os.path.join(docs_dir, f"{base_name}.pdf")
+
+        if os.path.exists(md_file):
+            print(f"[*] Processing {report_name}...")
+            markdown_to_docx(md_file, docx_file)
+            markdown_to_pdf(md_file, pdf_file)
+        else:
+            print(f"[!] Warning: {md_file} not found")
