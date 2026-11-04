@@ -39,9 +39,9 @@ DASHBOARD_PORT=8080
 HF_VECTOR_URL=https://outstandingom-vector.hf.space
 HF_KNOWLEDGE_URL=https://outstandingom-knowledge-graph-env.hf.space
 MCP_SERVER_URL=https://mcp-server-2sl7.onrender.com
-MCP_API_KEY=outstandingom_mcp_2026hjfbechjbdhjjfbnkqjkj
+MCP_API_KEY=
 SUPABASE_URL=https://vtlmgubzcktztkuymtir.supabase.co
-SUPABASE_ANON_KEY=sb_publishable_0Qoicwxg64tkFReoDSKJ3g_dOSZJPCE
+SUPABASE_ANON_KEY=
 EOF
     fi
 else

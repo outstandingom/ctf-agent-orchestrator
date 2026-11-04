@@ -50,9 +50,9 @@ if not exist ".env" (
             echo HF_VECTOR_URL=https://outstandingom-vector.hf.space
             echo HF_KNOWLEDGE_URL=https://outstandingom-knowledge-graph-env.hf.space
             echo MCP_SERVER_URL=https://mcp-server-2sl7.onrender.com
-            echo MCP_API_KEY=outstandingom_mcp_2026hjfbechjbdhjjfbnkqjkj
+            echo MCP_API_KEY=
             echo SUPABASE_URL=https://vtlmgubzcktztkuymtir.supabase.co
-            echo SUPABASE_ANON_KEY=sb_publishable_0Qoicwxg64tkFReoDSKJ3g_dOSZJPCE
+            echo SUPABASE_ANON_KEY=
         ) > ".env"
     )
 ) else (

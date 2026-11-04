@@ -222,7 +222,7 @@ def configure_env():
     existing.setdefault("HF_VECTOR_URL", "https://outstandingom-vector.hf.space")
     existing.setdefault("HF_KNOWLEDGE_URL", "https://outstandingom-knowledge-graph-env.hf.space")
     existing.setdefault("MCP_SERVER_URL", "https://mcp-server-2sl7.onrender.com")
-    existing.setdefault("MCP_API_KEY", "outstandingom_mcp_2026hjfbechjbdhjjfbnkqjkj")
+    existing.setdefault("MCP_API_KEY", "")
     existing.setdefault("FORENSIC_DIR", os.path.join(PARENT_DIR, "forensic"))
 
     # Write safely

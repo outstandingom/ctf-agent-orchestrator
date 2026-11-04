@@ -113,7 +113,7 @@ Integrated with a local persistent cache (`codebase_architecture_memory.json`) f
 ## 5. Live Browser DevTools Integration (Playwright MCP)
 
 Connected directly to the user's active Chrome/Edge browser via the Playwright MCP Bridge:
-* **Token Bypass**: Configured with `PLAYWRIGHT_MCP_EXTENSION_TOKEN=ZmFHIloaoXil8UmO0kL6qikaZihZPrX91kvteBn92N4`, eliminating manual approval prompts.
+* **Token handling**: Configure the Playwright MCP token locally through the server's supported setup. Never commit tokens or disable approval controls to bypass authorization.
 * **Live In-Memory Tampering**:
   - Dumps browser JavaScript heap variables: `window.__VAULT_SESSION`.
   - Overrides client-side permissions: `window.__VAULT_SESSION.user_role = "admin"`.

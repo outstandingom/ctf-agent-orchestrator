@@ -719,6 +719,11 @@ def select_relevant_tools(user_prompt: str) -> list:
     if any(k in p for k in ["rsa", "xor", "cipher", "aes", "des", "prng", "seed", "hash", "md5", "sha", "crypto", "decode", "decrypt", "base64", "rot"]):
         core_names.update(["symbolic_execution_solver", "cyberchef_decode", "parallel_exploit_worker"])
 
+    # RSA challenges should have the specialized factoring/weak-key engine available
+    # even when the prompt does not name a specific attack such as Wiener or Fermat.
+    if any(k in p for k in ["rsa", "wiener", "pollard", "fermat factor", "private exponent", "rsa modulus", "weak prime"]):
+        core_names.add("advanced_crypto_solver")
+
     # Reverse Engineering / Constraint Solving
     if any(k in p for k in ["crackme", "z3", "equation", "constraint", "branch", "solve", "math", "bitvec"]):
         core_names.update(["symbolic_execution_solver", "parallel_exploit_worker"])
@@ -2193,14 +2198,29 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
             return g if 1 < g < n else None
 
         # --- SMALL-e / Cube-root (e=3) ATTACK ---
+        def integer_cube_root(value):
+            """Return floor(cuberoot(value)) using integer arithmetic only."""
+            if value < 0:
+                return -integer_cube_root(-value)
+            low, high = 0, 1 << ((value.bit_length() + 2) // 3)
+            while low <= high:
+                mid = (low + high) // 2
+                cube = mid * mid * mid
+                if cube < value:
+                    low = mid + 1
+                elif cube > value:
+                    high = mid - 1
+                else:
+                    return mid
+            return high
+
         def small_e_attack(n, e_s, c):
-            if e_s == 3:
-                # Cube root of ciphertext
-                m = round(c ** (1/3))
-                for delta in range(-2, 3):
-                    cand = m + delta
-                    if pow(cand, 3, n) == c % n:
-                        return cand
+            # Textbook low-exponent recovery is possible only when m^3 < n,
+            # so the ciphertext is the unwrapped integer cube.
+            if e_s == 3 and c >= 0:
+                m = integer_cube_root(c)
+                if m * m * m == c and pow(m, 3, n) == c % n:
+                    return m
             return None
 
         # --- DETECT WEAK PRIME (p close to q) ---
@@ -2519,11 +2539,17 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
                 kind = "PyInstaller_bundle"
             else:
                 kind = "unknown_binary"
-            entropy = sum(
-                -(c / len(data)) * (c / len(data)).bit_length()
-                for c in [data.count(bytes([i])) for i in range(256)]
-                if c > 0
-            ) if data else 0.0
+            # Shannon entropy in bits/byte. Counter avoids rescanning the
+            # entire attachment 256 times; log2 is required for float probabilities.
+            import math
+            from collections import Counter
+            entropy = (
+                -sum(
+                    (count / len(data)) * math.log2(count / len(data))
+                    for count in Counter(data).values()
+                )
+                if data else 0.0
+            )
             return {"kind": kind, "size_bytes": len(data), "entropy_estimate": round(entropy, 3)}
 
         def fetch_challenges():
