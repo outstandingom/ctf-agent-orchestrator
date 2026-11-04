@@ -44,9 +44,9 @@ The claims of an autonomous, integrated browser agent and a “5/5” benchmark 
 - `scripts/test_top01_engines.py` mostly checks whether the response contains the word `factored`; the CTFd test passes on many error-shaped responses, and the PWN test passes if it returns any expected-looking structure. These are smoke checks, not correctness tests.
 - **Fix:** use portable paths; test real parser/solver outputs; assert recovered factors/plaintext/flag and negative cases; test malformed inputs and timeouts; run CI on clean Linux and Windows environments; report each case's actual result. Keep benchmark claims scoped to the cases actually tested.
 
-### Medium — tool selection can omit the best RSA solver
-- `select_relevant_tools()` adds `advanced_crypto_solver` for terms such as “wiener”, “factor”, or “lattice”, but the general cryptography keyword branch for “rsa” does not add it. A plain RSA challenge can therefore be routed without the specialized solver.
-- **Fix:** add the advanced solver for RSA/weak-key indicators, and test tool selection against a table of representative challenge prompts.
+### Medium — tool selection could omit the best RSA solver (fixed on this branch)
+- On `main`, `select_relevant_tools()` adds `advanced_crypto_solver` for terms such as “wiener”, “factor”, or “lattice”, but the general cryptography keyword branch for “rsa” does not add it. A plain RSA challenge could therefore be routed without the specialized solver.
+- **Remediation on this branch:** RSA/weak-key indicators now add `advanced_crypto_solver`; `scripts/test_tool_selector.py` adds regression tests for RSA, Wiener, PCAP, web, and fallback prompts.
 
 ### Medium — logs can capture sensitive tool inputs
 - `execute_tool()` prints the entire tool input JSON. Tool inputs can include CTFd tokens, URLs, uploaded paths, or challenge material.
@@ -63,6 +63,8 @@ The claims of an autonomous, integrated browser agent and a “5/5” benchmark 
 - Changed the documented manual Uvicorn command to bind to `127.0.0.1`.
 - Restricted CORS to explicit configured origins and disabled credentialed CORS.
 - Expanded `.gitignore` for local environment and runtime artifacts.
+- Fixed RSA tool selection so plain RSA prompts include the advanced crypto solver; added tool-selector regression tests.
+- Replaced machine-specific Windows paths in the two reviewed benchmark/test scripts with paths relative to the script. (The benchmark's weak assertions and synthetic challenge design still need redesign.)
 - Added security notes to the README.
 
 These changes are **not merged into `main`**. They do not fix every critical issue listed above and do not make the service safe to deploy publicly.
@@ -74,7 +76,7 @@ These changes are **not merged into `main`**. They do not fix every critical iss
 3. Run secret scanning and dependency scanning.
 4. Add API auth/authorization and sandbox isolation before exposing any dangerous endpoint.
 5. Replace the benchmark's hardcoded path and weak assertions; run the suite on a clean machine.
-6. Add regression tests for the RSA tool selector, malformed solver inputs, URL/IP allowlists, upload limits, and authentication.
+6. Run `python -m unittest scripts.test_tool_selector` and add tests for malformed solver inputs, URL/IP allowlists, upload limits, and authentication.
 7. Verify the real TCS HackQuest rules before using any automation against the live competition.
 
 ## Bottom line
