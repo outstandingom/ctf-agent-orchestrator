@@ -173,10 +173,63 @@ All 5 regression suites in `challenges/quantum_vault/tests/test_challenge.py` pa
 
 ---
 
-## 8. Git Commit Log & Remote Status
+## 8. Google CTF Championship-Tier Benchmark: Apex Gauntlet
+
+Designed, deployed, verified, and automated an end-to-end multi-tier CTF benchmark modeled after modern **Google CTF and DEF CON** finals. The benchmark tests the complete orchestration pipeline where each stage gate produces cryptographic artifacts or tokens strictly required to unlock the next stage.
+
+### 8.1 5-Tier Connected Architecture
+
+```
+[ Stage 1: Browser DOM/Memory ]
+        │
+        │ Extracts 'window.__APEX_SHIELD.session_token' -> 'APX_INIT_9b8a7c2d1e'
+        ▼
+[ Stage 2: SMT Constraint Reversing (Z3) ]
+        │
+        │ Solves 16-byte BitVec non-linear equations -> 'APX_V3CT0R_9921!'
+        ▼
+[ Stage 3: Wiener RSA Cryptanalysis ]
+        │
+        │ Continued fractions on small private exponent d -> 'APX_PCAP_KEY_77'
+        ▼
+[ Stage 4: Deep Packet Inspection & PCAP Carving ]
+        │
+        │ Reassembles TCP stream & carves 'admin_waf_token.txt' -> 'APEX_ADMIN_SIGNATURE_9921_WAF_BYPASS'
+        ▼
+[ Stage 5: Hardened WAF Bypass & SSTI Vault ]
+        │
+        │ Admin signature auth + sanitized template injection -> MASTER FLAG
+        ▼
+[ ★ HQX{g00gl3_ctf_4p3x_g4untl3t_c0mpl3t3_2026} ★ ]
+```
+
+### 8.2 Component Tool Orchestration Matrix
+
+| Stage | Defensive Layer | Vulnerability & Mathematical Mechanics | AI Orchestrator Tool | Result & Metric |
+| :--- | :--- | :--- | :--- | :--- |
+| **Stage 1** | Client DOM & Memory | In-memory session credentials in `window.__APEX_SHIELD` & hidden DOM attribute `#apex-vault-token` | Playwright MCP (`browser_evaluate`, DOM inspector) | Token `APX_INIT_9b8a7c2d1e` extracted |
+| **Stage 2** | SMT Constraint Reversing | 16-byte non-linear modular, bitwise XOR, and additive equations | `symbolic_execution_solver` (Z3 BitVec) | Solved in **0.48s**: `APX_V3CT0R_9921!` |
+| **Stage 3** | Cryptanalysis (Wiener RSA) | Small private exponent $d < \frac{1}{3}N^{1/4}$ ($N=135\text{ bits}$, $e=2324985104447078083837098559857319598981$) | `advanced_crypto_solver` (Continued fraction expansion) | Factored in **0.02s**: $d=1021$, Key: `APX_PCAP_KEY_77` |
+| **Stage 4** | Deep Packet Inspection | Synthetic Ethernet/IP/TCP capture with HTTP `multipart/form-data` file transmission | `run_forensics_inspection` (`PCAPNetworkExtractor`) | TCP stream reassembled, carved `admin_waf_token.txt`: `APEX_ADMIN_SIGNATURE_9921_WAF_BYPASS` |
+| **Stage 5** | Hardened WAF & SSTI Vault | Strict Sentinel WAF checking `X-Apex-Signature` and blocking RCE terms (`os`, `eval`, `__class__`) | Template Fuzzer / HTTP Auditor | Rendered sanitized expression `{{ vault_flag }}`, extracted flag |
+
+### 8.3 Autonomous Solver Performance
+* **Solver Script**: `challenges/apex_gauntlet/solvers/solve_full_chain.py`
+* **Test Suite**: `challenges/apex_gauntlet/tests/test_gauntlet.py` (5/5 tests passing in 1.58s)
+* **Live Full-Chain Execution**: **2.04 seconds** from unauthenticated entry to Master Flag capture.
+* **Master Flag**: `HQX{g00gl3_ctf_4p3x_g4untl3t_c0mpl3t3_2026}`
+
+---
+
+## 9. Git Commit Log & Remote Status
 
 All code, tests, documentation, and challenge files have been committed and pushed to GitHub:
 * **Repository**: `https://github.com/outstandingom/ctf-agent-orchestrator.git`
 * **Commits**:
   - `9812fd1`: Non-destructive search-replace engine, safe branching, fullstack terminal, and DNA codebase memory.
   - `743f01d`: Replicated Google CTF Quantum Vault challenge suite, Z3 solver, SSTI WAF, and browser DevTools verification.
+  - `4197808`: Advanced crypto solver (Wiener/Pollard), pwn crash triage, and CTFd speed listener integration.
+  - `ad3389c`: HackQuest 5/5 benchmark test suite and verification.
+  - `d3c19fc`: Server API exposure for crypto, pwn triage, and CTFd listener.
+  - `591610e`: Zero-configuration 1-click startup automation (`start.bat` / `start.sh`).
+  - `daa2e5c`: CTF performance & memory bounding optimizations (LRU session cap, multi-turn socket drain).

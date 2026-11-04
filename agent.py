@@ -2102,10 +2102,10 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
     # ----- ADVANCED CRYPTO SOLVER (Wiener / Boneh-Durfee / Coppersmith / ECM) -----
     elif tool_name == "advanced_crypto_solver":
         import math
-        attack = tool_input.get("attack", "auto").strip().lower()
-        n_str  = tool_input.get("n", "").strip()
-        e_str  = tool_input.get("e", "0").strip()
-        c_str  = tool_input.get("c", "0").strip()
+        attack = str(tool_input.get("attack", "auto") or "auto").strip().lower()
+        n_str  = str(tool_input.get("n", "") or "").strip()
+        e_str  = str(tool_input.get("e", "0") or "0").strip()
+        c_str  = str(tool_input.get("c", "0") or "0").strip()
 
         def _parse_int(s):
             s = s.strip()
