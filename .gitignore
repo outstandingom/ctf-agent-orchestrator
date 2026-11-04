@@ -1,4 +1,8 @@
 .env
+.env.*
+!.env.example
 __pycache__/
 *.pyc
 *.log
+benchmark_results.json
+uploads/
