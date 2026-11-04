@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>QUANTUM VAULT // Google CTF Replica</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background-color: #050811; color: #e2e8f0; font-family: monospace; }
+    .neon-border { border: 1px solid #00f2fe; box-shadow: 0 0 15px rgba(0, 242, 254, 0.2); }
+    .glow-text { text-shadow: 0 0 8px rgba(0, 242, 254, 0.6); }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-6 selection:bg-cyan-500 selection:text-black">
+
+  <div class="max-w-2xl w-full bg-slate-950/80 rounded-2xl p-8 border border-slate-800 neon-border space-y-6">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+      <div>
+        <h1 class="text-xl font-bold text-cyan-400 glow-text flex items-center gap-2">
+          <span>⚡</span> QUANTUM VAULT v3.4
+        </h1>
+        <p class="text-xs text-slate-400">Google CTF Hardened Defense Benchmark</p>
+      </div>
+      <span id="badge-hardness" class="px-2.5 py-1 rounded text-xs bg-rose-950 text-rose-400 border border-rose-800 font-bold">
+        HARDNESS: GOOGLE_CTF_TIER
+      </span>
+    </div>
+
+    <!-- Client-Side Memory Banner -->
+    <div class="p-3 bg-slate-900/60 rounded-xl border border-slate-800 text-xs space-y-1">
+      <div class="flex justify-between">
+        <span class="text-slate-400">Client Memory State:</span>
+        <span id="cli-state" class="text-amber-400 font-bold">LOCKED (Guest)</span>
+      </div>
+      <div class="flex justify-between">
+        <span class="text-slate-400">Z3 SMT Constraint Engine:</span>
+        <span class="text-cyan-400">ARMED (16-Byte Non-Linear Matrix)</span>
+      </div>
+      <div class="flex justify-between">
+        <span class="text-slate-400">Template Engine WAF:</span>
+        <span class="text-emerald-400 font-bold">ACTIVE (Strict Filter)</span>
+      </div>
+    </div>
+
+    <!-- STAGE 1: Z3 SMT PASSCODE INPUT -->
+    <div class="space-y-3">
+      <label class="text-xs text-cyan-300 font-bold block">STAGE 1: 16-BYTE QUANTUM PASSCODE (Z3 SMT)</label>
+      <div class="flex gap-2">
+        <input type="text" id="passcode-input" maxlength="16" placeholder="Enter 16-char key..." class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white font-mono focus:border-cyan-400 focus:outline-none">
+        <button onclick="submitPasscode()" id="btn-unlock" class="px-5 py-2 bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold text-xs rounded-lg transition shadow-lg shadow-cyan-600/30">
+          UNLOCK
+        </button>
+      </div>
+      <div id="unlock-msg" class="text-xs font-mono hidden p-2 rounded"></div>
+    </div>
+
+    <!-- STAGE 2: AUDIT LOG TEMPLATE INJECTION -->
+    <div id="stage-2-box" class="space-y-3 opacity-50 pointer-events-none transition-all duration-300">
+      <label class="text-xs text-purple-300 font-bold block">STAGE 2: VAULT AUDIT SIGNATURE (Jinja2 SSTI)</label>
+      <div class="flex gap-2">
+        <input type="text" id="audit-signature" placeholder="Signature (e.g. {{ 7*7 }} or filter bypass)" value="Vault_Audit_{{ server_time }}" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white font-mono focus:border-purple-400 focus:outline-none">
+        <button onclick="submitAuditSignature()" id="btn-audit" class="px-5 py-2 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded-lg transition shadow-lg shadow-purple-600/30">
+          EXECUTE
+        </button>
+      </div>
+      <div id="audit-output" class="text-xs font-mono bg-black p-3 rounded-lg border border-slate-800 text-emerald-400 whitespace-pre-wrap min-h-[40px]">Audit log output will appear here.</div>
+    </div>
+
+  </div>
+
+  <script>
+    // Hidden client-side state in browser memory (accessible via DevTools / Playwright evaluate)
+    window.__VAULT_SESSION = {
+      user_role: "guest",
+      devtools_override_allowed: true,
+      auth_token: null,
+      debug_endpoint: "/api/vault/spec",
+      hint: "Use symbolic_execution_solver to solve /api/vault/spec constraints, or override window.__VAULT_SESSION.auth_token in DevTools"
+    };
+
+    async function submitPasscode() {
+      const pc = document.getElementById('passcode-input').value.trim();
+      const msg = document.getElementById('unlock-msg');
+      msg.className = "text-xs font-mono p-2 rounded bg-slate-900 text-cyan-300";
+      msg.style.display = "block";
+      msg.textContent = "Validating passcode against non-linear SMT matrix...";
+
+      try {
+        const res = await fetch('/api/vault/unlock', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ passcode: pc })
+        });
+        const data = await res.json();
+        if (data.success) {
+          msg.className = "text-xs font-mono p-2 rounded bg-emerald-950/80 border border-emerald-700 text-emerald-300";
+          msg.textContent = "✅ STAGE 1 PASSED: " + data.message + " | AuthToken: " + data.auth_token.slice(0, 16) + "...";
+          window.__VAULT_SESSION.auth_token = data.auth_token;
+          window.__VAULT_SESSION.user_role = "operator";
+
+          document.getElementById('cli-state').textContent = "AUTHORIZED (Operator)";
+          document.getElementById('cli-state').className = "text-emerald-400 font-bold";
+
+          // Enable stage 2
+          const s2 = document.getElementById('stage-2-box');
+          s2.classList.remove('opacity-50', 'pointer-events-none');
+        } else {
+          msg.className = "text-xs font-mono p-2 rounded bg-rose-950/80 border border-rose-700 text-rose-300";
+          msg.textContent = "❌ " + (data.error || "Access Denied");
+        }
+      } catch (err) {
+        msg.textContent = "Error: " + err.message;
+      }
+    }
+
+    async function submitAuditSignature() {
+      const sig = document.getElementById('audit-signature').value;
+      const token = window.__VAULT_SESSION.auth_token;
+      const out = document.getElementById('audit-output');
+      out.textContent = "Rendering template signature...";
+
+      try {
+        const res = await fetch('/api/vault/audit', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ auth_token: token, signature: sig })
+        });
+        const data = await res.json();
+        if (data.status === "success") {
+          out.textContent = data.rendered_signature;
+        } else if (data.status === "blocked") {
+          out.innerHTML = `<span style="color: #f43f5e; font-weight: bold;">🚫 WAF BLOCKED:</span> ${data.waf_alert}`;
+        } else {
+          out.textContent = JSON.stringify(data, null, 2);
+        }
+      } catch (err) {
+        out.textContent = "Audit Error: " + err.message;
+      }
+    }
+  </script>
+</body>
+</html>
