@@ -1517,18 +1517,9 @@ flag[1] + 10 == 75
           }
         } catch (e) {}
 
-        if (!data || !data.content) {
-          const res = await fetch('https://mcp-server-2sl7.onrender.com/api/test-tool', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer outstandingom_mcp_2026hjfbechjbdhjjfbnkqjkj'
-            },
-            body: JSON.stringify({ tool: 'list_repositories', params: {} })
-          });
-          if (res.ok) {
-            data = await res.json();
-          }
+        // Never call the MCP gateway directly from browser code: credentials belong on the backend.
+        if (!data) {
+          throw new Error('Repository API did not return JSON. Check the backend and its MCP configuration.');
         }
 
         let repos = [];
