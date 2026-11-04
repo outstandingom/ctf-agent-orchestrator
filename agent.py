@@ -719,6 +719,11 @@ def select_relevant_tools(user_prompt: str) -> list:
     if any(k in p for k in ["rsa", "xor", "cipher", "aes", "des", "prng", "seed", "hash", "md5", "sha", "crypto", "decode", "decrypt", "base64", "rot"]):
         core_names.update(["symbolic_execution_solver", "cyberchef_decode", "parallel_exploit_worker"])
 
+    # RSA challenges should have the specialized factoring/weak-key engine available
+    # even when the prompt does not name a specific attack such as Wiener or Fermat.
+    if any(k in p for k in ["rsa", "wiener", "pollard", "fermat factor", "private exponent", "rsa modulus", "weak prime"]):
+        core_names.add("advanced_crypto_solver")
+
     # Reverse Engineering / Constraint Solving
     if any(k in p for k in ["crackme", "z3", "equation", "constraint", "branch", "solve", "math", "bitvec"]):
         core_names.update(["symbolic_execution_solver", "parallel_exploit_worker"])
