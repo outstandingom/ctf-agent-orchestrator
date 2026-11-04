@@ -2708,7 +2708,14 @@ class CTFOrchestratorAgent:
             for model_candidate in fallback_models:
                 for retry in range(2):
                     try:
-                        active_tools = select_relevant_tools(user_prompt)
+                        # Include recent messages in context so dynamic routing adapts across multi-turn stages
+                        recent_ctx = user_prompt
+                        for m in messages[-4:]:
+                            if isinstance(m, dict) and isinstance(m.get("content"), str):
+                                recent_ctx += " " + m["content"]
+                            elif hasattr(m, "content") and isinstance(m.content, str):
+                                recent_ctx += " " + m.content
+                        active_tools = select_relevant_tools(recent_ctx)
                         response = self.client.chat.completions.create(
                             model=model_candidate,
                             messages=messages,
