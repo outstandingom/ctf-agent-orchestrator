@@ -67,18 +67,18 @@ CLAUDE_MODEL=claude-3-5-sonnet-20241022
 # Dashboard Port
 DASHBOARD_PORT=8080
 
-# External Cloud Gateways (Configured by default)
+# External Cloud Gateways (URLs are defaults; credentials are local)
 HF_VECTOR_URL=https://outstandingom-vector.hf.space
 HF_KNOWLEDGE_URL=https://outstandingom-knowledge-graph-env.hf.space
 MCP_SERVER_URL=https://mcp-server-2sl7.onrender.com
-MCP_API_KEY=outstandingom_mcp_2026hjfbechjbdhjjfbnkqjkj
+MCP_API_KEY=your_mcp_gateway_key_here
 ```
 
 ### 3. Launch the Server
 ```bash
 python server.py
 # Or using uvicorn directly:
-python -m uvicorn server:app --host 0.0.0.0 --port 8080
+python -m uvicorn server:app --host 127.0.0.1 --port 8080
 ```
 Open **[http://localhost:8080](http://localhost:8080)** in your browser.
 
@@ -88,9 +88,9 @@ Open **[http://localhost:8080](http://localhost:8080)** in your browser.
 
 The agent includes integration with the **Playwright MCP Server** for client-side exploitation, DOM inspection, and DevTools memory tampering (`window`, `localStorage`, `sessionStorage`):
 
-1. **Token Configuration**: The Playwright extension connects via the standard token:
+1. **Token Configuration**: Configure your own extension token locally using the MCP server's documented setup. Never commit the token to Git.
    ```json
-   "PLAYWRIGHT_MCP_EXTENSION_TOKEN": "ZmFHIloaoXil8UmO0kL6qikaZihZPrX91kvteBn92N4"
+   "PLAYWRIGHT_MCP_EXTENSION_TOKEN": "YOUR_LOCAL_PLAYWRIGHT_MCP_TOKEN"
    ```
 2. **Global MCP Config**: Configured in `~/.claude.json` or Antigravity's global `mcp_config.json`:
    ```json
@@ -98,7 +98,7 @@ The agent includes integration with the **Playwright MCP Server** for client-sid
      "command": "npx",
      "args": ["-y", "@automata/playwright-mcp-server@latest"],
      "env": {
-       "PLAYWRIGHT_MCP_EXTENSION_TOKEN": "ZmFHIloaoXil8UmO0kL6qikaZihZPrX91kvteBn92N4"
+       "PLAYWRIGHT_MCP_EXTENSION_TOKEN": "YOUR_LOCAL_PLAYWRIGHT_MCP_TOKEN"
      }
    }
    ```
