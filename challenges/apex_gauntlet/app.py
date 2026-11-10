@@ -97,6 +97,9 @@ class Stage2UnlockRequest(BaseModel):
 class Stage3UnlockRequest(BaseModel):
     key: str
 
+class Stage4VerifyRequest(BaseModel):
+    signature: str
+
 class AdminAuditRequest(BaseModel):
     template: str
 
@@ -199,6 +202,16 @@ async def download_pcap():
         filename="apex_traffic.pcap",
         media_type="application/vnd.tcpdump.pcap"
     )
+
+@app.post("/api/apex/stage4/verify")
+async def verify_stage4_signature(req: Stage4VerifyRequest):
+    if req.signature != STAGE4_ADMIN_SIGNATURE:
+        raise HTTPException(status_code=403, detail="Invalid forensic admin signature")
+    return {
+        "status": "authenticated",
+        "stage": 5,
+        "message": "Forensic Admin Signature Accepted. Sentinel Audit Console Online."
+    }
 
 # ---------------- STAGE 5: Hardened Web SSTI / WAF Bypass ----------------
 # Hardened WAF pattern: blocks remote code execution payloads, allows template expressions
