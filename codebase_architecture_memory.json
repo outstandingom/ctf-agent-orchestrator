@@ -12,5 +12,12 @@
     "target": "VercelProduction",
     "context": "FastAPI server deployed as serverless function on Vercel with MCP Render Gateway bridge",
     "timestamp": "2026-11-03 17:45:35"
+  },
+  {
+    "source": "Apex_Gauntlet_Frontend",
+    "relationship": "depends_on",
+    "target": "Z3_BitVec_Solver",
+    "context": "16-byte non-linear modular SMT equations",
+    "timestamp": "2026-11-11 17:33:55"
   }
 ]
