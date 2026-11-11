@@ -32,6 +32,9 @@ def push_file_via_mcp(rel_path, commit_message):
 
 if __name__ == "__main__":
     files_to_push = [
+        ("docs/CTF_AGENT_MASTER_ARCHITECTURE_AND_OPERATIONS_MANUAL.md", "docs(architecture): add master architecture, component specifications and operations manual"),
+        ("README.md", "docs: update README with v2.5 architecture, ecosystem roles and manual links"),
+        ("scripts/convert_docs.py", "chore(docs): register master architecture manual in docx/pdf converter"),
         ("start.bat", "chore(launcher): 1-click launch with Playwright Chromium auto-install and REA engine cloning"),
         ("start.sh", "chore(launcher): linux/macOS 1-click launcher sync with REA and Playwright setup"),
         ("docs/AUTONOMOUS_REVERSE_ENGINEERING_AND_CTF_METHODOLOGY.md", "docs(methodology): add comprehensive autonomous reverse engineering and cognitive mapping framework"),

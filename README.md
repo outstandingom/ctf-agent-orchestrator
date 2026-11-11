@@ -1,10 +1,14 @@
-# 🤖 CTF AI Orchestrator Command Center (v2.0)
+# 🤖 CTF AI Orchestrator Command Center (v2.5)
 
-An autonomous cybersecurity copilot, CTF solver engine, SWE developer agent, and real-time command center built for high-stakes cybersecurity competitions (**TCS HackQuest, PicoCTF, Google CTF**) and automated software engineering.
+An autonomous cybersecurity copilot, multi-agent CTF solver engine, SWE developer agent, and real-time command center built for high-stakes cybersecurity competitions (**TCS HackQuest, PicoCTF, Google CTF, DEF CON Quals**) and automated software vulnerability research.
 
-Combines ultra-fast LPU inference (Groq), automated SMT theorem proving (`z3-solver`), dynamic web fuzzing with differential testing, cryptographic attacks (Wiener, Pollard $p-1$, Fermat), PRNG state recovery (`randcrack`), network PCAP stream carving (`scapy`), WSL2 Linux binary analysis, CTFd competition monitoring, and Playwright browser DOM/memory manipulation.
+Combines ultra-fast LPU inference (Groq), automated SMT theorem proving (`z3-solver`), dynamic web fuzzing with differential testing, cryptographic attacks (Wiener, Pollard $p-1$, Fermat), PRNG state recovery (`randcrack`), network PCAP stream carving (`scapy`), WSL2 Linux binary analysis, CTFd competition monitoring, evidence-provenance reverse engineering (`morluto/rea`), and Playwright browser DOM/memory manipulation with zero cheating.
 
-📖 **For the detailed developer reference, see [docs/COMPLETE_USER_GUIDE.md](docs/COMPLETE_USER_GUIDE.md) and [docs/MASTER_SYSTEM_ARCHITECTURE.md](docs/MASTER_SYSTEM_ARCHITECTURE.md).**
+📚 **Master Documentation & System Manuals**:
+- 🛡️ **[Master Architecture, Component Specifications & Operations Manual](docs/CTF_AGENT_MASTER_ARCHITECTURE_AND_OPERATIONS_MANUAL.md)** ([DOCX](docs/CTF_AGENT_MASTER_ARCHITECTURE_AND_OPERATIONS_MANUAL.docx) | [PDF](docs/CTF_AGENT_MASTER_ARCHITECTURE_AND_OPERATIONS_MANUAL.pdf))
+- 🔬 **[Autonomous Reverse Engineering & CTF Methodology](docs/AUTONOMOUS_REVERSE_ENGINEERING_AND_CTF_METHODOLOGY.md)** ([DOCX](docs/AUTONOMOUS_REVERSE_ENGINEERING_AND_CTF_METHODOLOGY.docx) | [PDF](docs/AUTONOMOUS_REVERSE_ENGINEERING_AND_CTF_METHODOLOGY.pdf))
+- ⚡ **[Complete User Operational Guide](docs/COMPLETE_USER_GUIDE.md)**
+- 🏆 **[Apex Gauntlet Benchmark Report (Playwright Black-Box Proof)](docs/APEX_GAUNTLET_COMPREHENSIVE_BENCHMARK_REPORT.md)** ([DOCX](docs/APEX_GAUNTLET_COMPREHENSIVE_BENCHMARK_REPORT.docx) | [PDF](docs/APEX_GAUNTLET_COMPREHENSIVE_BENCHMARK_REPORT.pdf))
 
 ---
 
@@ -19,14 +23,31 @@ start.bat
 1. Verify Python 3.10+ installation.
 2. Auto-initialize `.env` from `.env.example` if not already present.
 3. Automatically clone the companion **Forensic Engine** (`outstandingom/forensic`) into `..\forensic` if missing.
-4. Install all Python dependencies from `requirements.txt` (`z3-solver`, `sympy`, `scapy`, `pycryptodome`, etc.).
-5. Launch the Command Center on port 8080 and automatically open your default browser to **[http://localhost:8080/](http://localhost:8080/)**.
+4. Automatically clone the companion **Reverse Engineering Engine** (`morluto/rea`) into `..\rea` if missing.
+5. Install all Python dependencies from `requirements.txt` and install headless Playwright Chromium.
+6. Launch the Command Center on port 8080 and automatically open your default browser to **[http://localhost:8080/](http://localhost:8080/)**.
 
 ### 🐧 Linux / macOS / WSL (1-Click)
 ```bash
 chmod +x start.sh
 ./start.sh
 ```
+
+---
+
+## 🏛️ System Architecture & Ecosystem Breakdown
+
+### Repository & Component Roles
+
+| Repository / Service | Primary Role in Ecosystem | Key Capabilities on CTF Challenges |
+| :--- | :--- | :--- |
+| **`ctf-agent-orchestrator`** | Central Brain & Command Center | Fast LPU reasoning, dynamic tool router, Z3 SMT solver, Wiener RSA attack, Playwright UI solver, CTFd API listener |
+| **`forensic`** | Companion Forensic Engine | Deep packet inspection (`pcap_analyzer.py`), stream carving, steganography (LSB, audio), document metadata stripping |
+| **`rea` (`morluto/rea`)** | Reverse Engineering Engine | Evidence provenance parsing (Observations $\rightarrow$ Derivations $\rightarrow$ Inferences), JavaScript AST dependency mapping, client-side route discovery |
+| **ZeroGPU Vector DB** | Semantic Knowledge RAG | Vector retrieval for CVE exploit templates, SSTI bypass polyglots, and SMT constraint patterns (`HF_VECTOR_URL`) |
+| **DNA Knowledge Graph** | Persistent Cognitive Graph | State retention across complex multi-turn CTF campaigns (`HF_KNOWLEDGE_URL`) |
+| **Render MCP Gateway** | Remote Tool & Git Operations | Headless authenticated GitHub commits, branch creation, and PR submission without local credentials (`MCP_SERVER_URL`) |
+| **Supabase DB (`solves`)** | Telemetry & Solve Ledger | Public scoreboard verification, RLS-secured execution telemetry, flag tracking, and benchmark audit trails |
 
 ---
 

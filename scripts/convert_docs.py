@@ -237,6 +237,7 @@ if __name__ == "__main__":
     docs_dir = os.path.join(base_dir, "docs")
     
     target_reports = [
+        "CTF_AGENT_MASTER_ARCHITECTURE_AND_OPERATIONS_MANUAL.md",
         "MASTER_SYSTEM_ARCHITECTURE.md",
         "AUTONOMOUS_REVERSE_ENGINEERING_AND_CTF_METHODOLOGY.md",
         "APEX_GAUNTLET_COMPREHENSIVE_BENCHMARK_REPORT.md",
