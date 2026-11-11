@@ -8,14 +8,20 @@ if current_dir not in sys.path:
 
 from agent import execute_tool
 
-def push_file_via_mcp(repo_name, rel_path, commit_message):
+REPO_NAME = "ctf-agent-orchestrator"
+
+def push_file_via_mcp(rel_path, commit_message):
     full_path = os.path.join(current_dir, rel_path)
-    with open(full_path, "r", encoding="utf-8") as f:
+    if not os.path.exists(full_path):
+        print(f"[-] File not found: {full_path}")
+        return None
+
+    with open(full_path, "r", encoding="utf-8", errors="replace") as f:
         file_content = f.read()
 
-    print(f"\n[MCP PUSH] Uploading {rel_path} to {repo_name} via Render MCP Gateway...")
+    print(f"\n[MCP PUSH] Uploading {rel_path} to {REPO_NAME} via Render MCP Gateway...")
     payload = {
-        "repo": repo_name,
+        "repo": REPO_NAME,
         "path": rel_path.replace("\\", "/"),
         "content": file_content,
         "message": commit_message
@@ -25,16 +31,14 @@ def push_file_via_mcp(repo_name, rel_path, commit_message):
     return res_str
 
 if __name__ == "__main__":
-    # 1. Push COMPLETE_USER_GUIDE.md via MCP Gateway
-    push_file_via_mcp(
-        "ctf-agent-orchestrator",
-        "docs/COMPLETE_USER_GUIDE.md",
-        "docs: update operational manual with Dynamic Fuzzer, Z3 SMT, WSL2 bridge, and Ponytail token engine"
-    )
+    files_to_push = [
+        ("start.bat", "chore(launcher): 1-click launch with Playwright Chromium auto-install and REA engine cloning"),
+        ("start.sh", "chore(launcher): linux/macOS 1-click launcher sync with REA and Playwright setup"),
+        ("docs/AUTONOMOUS_REVERSE_ENGINEERING_AND_CTF_METHODOLOGY.md", "docs(methodology): add comprehensive autonomous reverse engineering and cognitive mapping framework"),
+        ("scripts/test_complete_methodology.py", "test(methodology): add end-to-end black-box verification test suite"),
+        ("challenges/apex_gauntlet/solvers/solve_playwright_interactive.py", "feat(solver): interactive Playwright browser UI solver with real file download"),
+        ("challenges/apex_gauntlet/templates/index.html", "feat(ui): interactive Cyberpunk terminal HUD with live form inputs and flag display banner")
+    ]
 
-    # 2. Push README.md via MCP Gateway
-    push_file_via_mcp(
-        "ctf-agent-orchestrator",
-        "README.md",
-        "docs: update README with complete system architecture and Google CTF test playbooks"
-    )
+    for rel_path, msg in files_to_push:
+        push_file_via_mcp(rel_path, msg)

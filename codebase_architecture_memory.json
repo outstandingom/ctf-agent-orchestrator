@@ -19,5 +19,12 @@
     "target": "Z3_BitVec_Solver",
     "context": "16-byte non-linear modular SMT equations",
     "timestamp": "2026-11-11 17:33:55"
+  },
+  {
+    "source": "Stage1_Session_Token",
+    "relationship": "unlocks_endpoint",
+    "target": "GET /api/apex/stage2/spec",
+    "context": "Bearer APX_INIT_9b8a7c2d1e required to access SMT constraints",
+    "timestamp": "2026-11-11 17:42:18"
   }
 ]
