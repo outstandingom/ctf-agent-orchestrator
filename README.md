@@ -308,6 +308,7 @@ All benchmark reports, challenge assets, captured evidence, and architectural sp
 
 | Artifact / Document | Format | Description |
 | :--- | :--- | :--- |
+| **Autonomous Reverse Engineering & CTF Methodology** | [Markdown](docs/AUTONOMOUS_REVERSE_ENGINEERING_AND_CTF_METHODOLOGY.md) \| [Word](docs/AUTONOMOUS_REVERSE_ENGINEERING_AND_CTF_METHODOLOGY.docx) \| [PDF](docs/AUTONOMOUS_REVERSE_ENGINEERING_AND_CTF_METHODOLOGY.pdf) | End-to-end operational guide: REA architecture modeling, DNA knowledge graph, ZeroGPU vector RAG, Ponytail lean analysis, and Playwright reactive loop. |
 | **Master Architecture Specification** | [Markdown](docs/MASTER_SYSTEM_ARCHITECTURE.md) \| [Word](docs/MASTER_SYSTEM_ARCHITECTURE.docx) \| [PDF](docs/MASTER_SYSTEM_ARCHITECTURE.pdf) | Complete dual-role CTF & SWE architectural specification. |
 | **Apex Gauntlet Benchmark Report** | [Markdown](docs/APEX_GAUNTLET_COMPREHENSIVE_BENCHMARK_REPORT.md) \| [Word](docs/APEX_GAUNTLET_COMPREHENSIVE_BENCHMARK_REPORT.docx) \| [PDF](docs/APEX_GAUNTLET_COMPREHENSIVE_BENCHMARK_REPORT.pdf) | Mathematical proofs, 5-stage chain analysis, and solver logs. |
 | **Full System Verification Report** | [Markdown](docs/FULL_SYSTEM_VERIFICATION_AND_BENCHMARK_REPORT.md) \| [Word](docs/FULL_SYSTEM_VERIFICATION_AND_BENCHMARK_REPORT.docx) \| [PDF](docs/FULL_SYSTEM_VERIFICATION_AND_BENCHMARK_REPORT.pdf) | TCS HackQuest 5/5 domain benchmark and solver verification. |
