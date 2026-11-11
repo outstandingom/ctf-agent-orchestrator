@@ -13,7 +13,7 @@ echo ^| ^|    ^| ^|  ^| ^|_     / _ \  ^| ^|  ^| ^| ^| ^| '__/ __^| '_ \ / _ \/ 
 echo ^| ^|_   ^| ^|  ^|  _^|   / ___ \ ^| ^|  ^| ^|_^| ^| ^| ^| (__^| ^| ^| ^|  __/\__ \ ^|_^| ^| ^| (_) ^|
 echo  \___^| ^|_^|  ^|_^|    /_/   \_\___^|  \___/^|_^|  \___^|_^| ^|_^|\___^|^|___/\__^|_^|  \___/ 
 echo                                                                               
-echo          1-Click Automated Setup & Launch Command Center (v2.0)
+echo          1-Click Automated Setup & Launch Command Center (v2.5)
 echo ========================================================================
 echo.
 
@@ -30,16 +30,16 @@ if %errorlevel% neq 0 (
 )
 
 for /f "tokens=*" %%v in ('python --version 2^>^&1') do set "PY_VER=%%v"
-echo [1/5] Python Environment: %PY_VER% (OK)
+echo [1/6] Python Environment: %PY_VER% (OK)
 
 :: 2. Auto-initialize .env if missing
 if not exist ".env" (
     if exist ".env.example" (
-        echo [2/5] Creating .env from .env.example...
+        echo [2/6] Creating .env from .env.example...
         copy /y ".env.example" ".env" >nul
         echo       .env file created! (Configure your GROQ_API_KEY if needed).
     ) else (
-        echo [2/5] Creating default .env configuration...
+        echo [2/6] Creating default .env configuration...
         (
             echo LLM_PROVIDER=groq
             echo GROQ_API_KEY=
@@ -56,7 +56,7 @@ if not exist ".env" (
         ) > ".env"
     )
 ) else (
-    echo [2/5] Environment File: .env found (OK)
+    echo [2/6] Environment File: .env found (OK)
 )
 
 :: 3. Auto-clone Companion Forensic Engine if missing
@@ -66,7 +66,7 @@ if exist "forensic\forensic_engine" set "FORENSIC_FOUND=1"
 if exist "C:\Users\SGI\Downloads\forensic\forensic_engine" set "FORENSIC_FOUND=1"
 
 if "%FORENSIC_FOUND%"=="0" (
-    echo [3/5] Companion Forensic Engine not detected. Checking git...
+    echo [3/6] Companion Forensic Engine not detected. Checking git...
     git --version >nul 2>&1
     if %errorlevel% equ 0 (
         echo       Auto-cloning Forensic Engine into ..\forensic ...
@@ -80,27 +80,54 @@ if "%FORENSIC_FOUND%"=="0" (
         echo       [WARNING] Git is not installed. Forensic engine must be manually placed at ..\forensic
     )
 ) else (
-    echo [3/5] Forensic Engine: Repository present (OK)
+    echo [3/6] Forensic Engine: Repository present (OK)
 )
 
-:: 4. Verify & Install Python Dependencies
-echo [4/5] Verifying dependencies from requirements.txt...
+:: 4. Auto-clone Companion REA Reversing Engine if missing
+set "REA_FOUND=0"
+if exist "..\rea" set "REA_FOUND=1"
+if exist "rea" set "REA_FOUND=1"
+if exist "C:\Users\SGI\Downloads\rea" set "REA_FOUND=1"
+
+if "%REA_FOUND%"=="0" (
+    echo [4/6] REA Reverse Engineering Engine not detected. Checking git...
+    git --version >nul 2>&1
+    if %errorlevel% equ 0 (
+        echo       Auto-cloning REA into ..\rea ...
+        git clone --depth 1 https://github.com/morluto/rea.git "..\rea"
+        if %errorlevel% equ 0 (
+            echo       REA cloned successfully!
+        ) else (
+            echo       [WARNING] Could not clone REA automatically.
+        )
+    )
+) else (
+    echo [4/6] REA Engine: Repository present (OK)
+)
+
+:: 5. Verify & Install Python Dependencies and Playwright Chromium
+echo [5/6] Verifying dependencies from requirements.txt...
 python -m pip install -r requirements.txt --quiet
 if %errorlevel% neq 0 (
     echo       [WARNING] Some packages failed to install. Running verbose install...
     python -m pip install -r requirements.txt
 ) else (
-    echo       All dependencies verified and ready! (OK)
+    echo       Python dependencies verified! (OK)
 )
 
-:: 5. Launch Dashboard & Server
-echo [5/5] Starting Command Center on port 8080...
+echo       Verifying Playwright Chromium headless browser...
+python -m playwright install chromium --quiet >nul 2>&1
+echo       Playwright browser ready! (OK)
+
+:: 6. Launch Dashboard & Server
+echo [6/6] Starting Command Center on port 8080...
 echo.
 echo ========================================================================
 echo   CTF AI Orchestrator Command Center Live!
 echo   Dashboard URL : http://localhost:8080/
 echo   API Docs      : http://localhost:8080/docs
 echo   Quantum Vault : http://localhost:8088/
+echo   Apex Gauntlet : http://localhost:8099/
 echo ========================================================================
 echo.
 
