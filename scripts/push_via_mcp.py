@@ -32,15 +32,15 @@ def push_file_via_mcp(rel_path, commit_message):
 
 if __name__ == "__main__":
     files_to_push = [
-        ("docs/CTF_AGENT_MASTER_ARCHITECTURE_AND_OPERATIONS_MANUAL.md", "docs(architecture): add master architecture, component specifications and operations manual"),
-        ("README.md", "docs: update README with v2.5 architecture, ecosystem roles and manual links"),
-        ("scripts/convert_docs.py", "chore(docs): register master architecture manual in docx/pdf converter"),
-        ("start.bat", "chore(launcher): 1-click launch with Playwright Chromium auto-install and REA engine cloning"),
-        ("start.sh", "chore(launcher): linux/macOS 1-click launcher sync with REA and Playwright setup"),
-        ("docs/AUTONOMOUS_REVERSE_ENGINEERING_AND_CTF_METHODOLOGY.md", "docs(methodology): add comprehensive autonomous reverse engineering and cognitive mapping framework"),
-        ("scripts/test_complete_methodology.py", "test(methodology): add end-to-end black-box verification test suite"),
-        ("challenges/apex_gauntlet/solvers/solve_playwright_interactive.py", "feat(solver): interactive Playwright browser UI solver with real file download"),
-        ("challenges/apex_gauntlet/templates/index.html", "feat(ui): interactive Cyberpunk terminal HUD with live form inputs and flag display banner")
+        ("agent.py", "feat(agent): full 27-tool suite with jailbreak_probe and Ponytail tool selector"),
+        ("jailbreaks_loader.py", "feat(jailbreaks): dynamic loader for 53 red-team prompts across 19 vendors"),
+        ("scripts/test_jailbreaks.py", "feat(scripts): automated AI red-teaming and prompt-injection bug finder"),
+        ("start.bat", "chore(launcher): v2.6 1-click launcher with git submodule update and 7-stage bootstrap"),
+        ("start.sh", "chore(launcher): linux/macOS v2.6 launcher with 7-stage submodule setup"),
+        ("docs/CTF_AGENT_MASTER_ARCHITECTURE_AND_OPERATIONS_MANUAL.md", "docs(architecture): add master architecture with Section 7 jailbreak probe"),
+        ("docs/CTF_TOOL_COMPARISON_AND_RATING.md", "docs(review): tool before vs after comparison and detailed 8.8/10 rating"),
+        ("docs/CTF_TOOL_INTEGRATION_MAP.md", "docs(tools): complete specification map of all 27 integrated agent tools"),
+        ("README.md", "docs: update README with v2.6 architecture and full toolset links")
     ]
 
     for rel_path, msg in files_to_push:
