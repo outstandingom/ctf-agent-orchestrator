@@ -13,7 +13,7 @@ echo ^| ^|    ^| ^|  ^| ^|_     / _ \  ^| ^|  ^| ^| ^| ^| '__/ __^| '_ \ / _ \/ 
 echo ^| ^|_   ^| ^|  ^|  _^|   / ___ \ ^| ^|  ^| ^|_^| ^| ^| ^| (__^| ^| ^| ^|  __/\__ \ ^|_^| ^| ^| (_) ^|
 echo  \___^| ^|_^|  ^|_^|    /_/   \_\___^|  \___/^|_^|  \___^|_^| ^|_^|\___^|^|___/\__^|_^|  \___/ 
 echo                                                                               
-echo          1-Click Automated Setup & Launch Command Center (v2.5)
+echo          1-Click Automated Setup & Launch Command Center (v2.6)
 echo ========================================================================
 echo.
 
@@ -105,8 +105,17 @@ if "%REA_FOUND%"=="0" (
     echo [4/6] REA Engine: Repository present (OK)
 )
 
-:: 5. Verify & Install Python Dependencies and Playwright Chromium
-echo [5/6] Verifying dependencies from requirements.txt...
+:: 5. Init git submodules (jailbreaks, etc.)
+echo [5/7] Initializing git submodules...
+git submodule update --init --recursive >nul 2>&1
+if %errorlevel% equ 0 (
+    echo       Submodules ready! (OK)
+) else (
+    echo       [WARNING] Could not init submodules. Run: git submodule update --init --recursive
+)
+
+:: 6. Verify & Install Python Dependencies and Playwright Chromium
+echo [6/7] Verifying dependencies from requirements.txt...
 python -m pip install -r requirements.txt --quiet
 if %errorlevel% neq 0 (
     echo       [WARNING] Some packages failed to install. Running verbose install...
@@ -119,8 +128,8 @@ echo       Verifying Playwright Chromium headless browser...
 python -m playwright install chromium --quiet >nul 2>&1
 echo       Playwright browser ready! (OK)
 
-:: 6. Launch Dashboard & Server
-echo [6/6] Starting Command Center on port 8080...
+:: 7. Launch Dashboard & Server
+echo [7/7] Starting Command Center on port 8080...
 echo.
 echo ========================================================================
 echo   CTF AI Orchestrator Command Center Live!

@@ -817,6 +817,10 @@ def select_relevant_tools(user_prompt: str) -> list:
     if any(k in p for k in ["listen", "first blood", "ctfd poll", "new challenge", "speed", "watch ctf", "auto download", "classify"]):
         core_names.update(["ctfd_speed_listener", "ctfd_manage"])
 
+    # Jailbreak / AI Red-Teaming / Prompt Injection
+    if any(k in p for k in ["jailbreak", "prompt injection", "red team", "redteam", "system prompt", "persona", "ai safety", "llm probe", "ai red", "bypass llm", "bypass ai", "llm fuzz", "prompt fuzz", "vendor prompt", "jb probe"]):
+        core_names.update(["jailbreak_probe"])
+
     # Netcat / Socket
     if any(k in p for k in ["nc ", "netcat", "socket", "port", "daemon", "tcp", "remote"]):
         core_names.update(["interactive_socket_probe"])
