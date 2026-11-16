@@ -8,6 +8,7 @@ from typing import Optional, List, Dict, Any
 from fastapi import FastAPI, HTTPException, Request, File, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse, StreamingResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from pydantic import BaseModel, Field
@@ -48,9 +49,12 @@ app.add_middleware(
 
 # Static files mount
 static_dir = os.path.join(current_dir, "static")
+docs_dir = os.path.join(current_dir, "docs")
 os.makedirs(static_dir, exist_ok=True)
+os.makedirs(docs_dir, exist_ok=True)
 try:
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
+    app.mount("/docs-files", StaticFiles(directory=docs_dir), name="docs-files")
 except Exception:
     pass
 
@@ -577,6 +581,52 @@ def run_ctfd_listen_endpoint(req: CTFdListenRequest):
         return json.loads(raw)
     except Exception:
         return {"response": raw}
+
+# =========================================================================
+# DOCUMENT & REPORT INVENTORY ENDPOINTS
+# =========================================================================
+@app.get("/api/reports")
+@app.get("/reports")
+def list_reports_endpoint():
+    """Lists all available reports, benchmarks, and vulnerability audit documents."""
+    docs_path = os.path.join(current_dir, "docs")
+    if not os.path.exists(docs_path):
+        return {"reports": []}
+
+    files = []
+    for f in os.listdir(docs_path):
+        full = os.path.join(docs_path, f)
+        if os.path.isfile(full) and (f.endswith(".md") or f.endswith(".pdf") or f.endswith(".docx") or f.endswith(".json")):
+            size_kb = round(os.path.getsize(full) / 1024, 1)
+            ext = os.path.splitext(f)[1].lower().replace(".", "")
+            files.append({
+                "filename": f,
+                "format": ext.upper(),
+                "size_kb": size_kb,
+                "download_url": f"/api/reports/download/{f}"
+            })
+    # Sort with newest/markdown first
+    files.sort(key=lambda x: (x["format"] != "MD", x["filename"]))
+    return {"reports": files}
+
+@app.get("/api/reports/download/{filename:path}")
+def download_report_endpoint(filename: str):
+    """Downloads or previews a specific report file."""
+    # Sanitize path to prevent traversal
+    safe_filename = os.path.basename(filename)
+    file_path = os.path.join(current_dir, "docs", safe_filename)
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Report file not found")
+
+    media_type = "application/octet-stream"
+    if safe_filename.endswith(".pdf"):
+        media_type = "application/pdf"
+    elif safe_filename.endswith(".md") or safe_filename.endswith(".json"):
+        media_type = "text/plain"
+    elif safe_filename.endswith(".docx"):
+        media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+
+    return FileResponse(file_path, media_type=media_type, filename=safe_filename)
 
 if __name__ == "__main__":
     import uvicorn
