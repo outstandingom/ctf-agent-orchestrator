@@ -203,6 +203,21 @@
               </div>
             </div>
 
+            <!-- Target Link Quick Injection & Bug Finder Bar -->
+            <div class="mb-4 p-3 bg-gradient-to-r from-cyan-950/40 via-slate-900/60 to-purple-950/40 border border-cyan-800/50 rounded-xl">
+              <label class="text-xs font-semibold text-cyan-400 flex items-center justify-between mb-1.5">
+                <span class="flex items-center gap-1.5"><span>🎯</span> Target URL / Live Link Investigator</span>
+                <span class="text-[10px] text-slate-400 font-mono">Autonomous Recon + Bug Finder</span>
+              </label>
+              <div class="flex items-center gap-2">
+                <input id="target-link-input" type="url" placeholder="https://target-website.com:8099 or http://127.0.0.1:8088" class="flex-1 bg-slate-950 border border-slate-700 focus:border-cyan-400 rounded-lg px-3 py-2 text-xs text-slate-100 placeholder-slate-500 font-mono focus:outline-none" />
+                <button type="button" onclick="startAutonomousLinkAudit()" class="px-3.5 py-2 bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 font-bold text-xs rounded-lg transition shadow-md shadow-cyan-500/20 whitespace-nowrap flex items-center gap-1.5">
+                  <span>⚡</span>
+                  <span>Find Bugs</span>
+                </button>
+              </div>
+            </div>
+
             <!-- File Attachment Widget -->
             <div class="mb-3 flex items-center justify-between gap-2">
               <input type="file" id="challenge-file-input" class="hidden" onchange="handleFileUpload(event)" />
@@ -954,6 +969,22 @@ flag[1] + 10 == 75
 
     function applyPreset(name) {
       document.getElementById('challenge-prompt').value = presets[name] || '';
+    }
+
+    function startAutonomousLinkAudit() {
+      const urlInput = document.getElementById('target-link-input');
+      const url = urlInput ? urlInput.value.trim() : '';
+      if (!url) {
+        alert('Please enter a target URL (e.g. http://127.0.0.1:8099 or https://your-ctf-host.com)');
+        if (urlInput) urlInput.focus();
+        return;
+      }
+
+      const promptBox = document.getElementById('challenge-prompt');
+      promptBox.value = `Target URL: ${url}\n\nTask: Perform end-to-end autonomous reconnaissance, architecture analysis, and vulnerability discovery on this target.\n1. Probe web endpoints and inspect responses for status code anomalies, reflection vulnerabilities, or error leaks.\n2. Run differential fuzzing or red-team prompts (via jailbreak_probe) if an AI/API endpoint is detected.\n3. Formulate the exact root-cause vulnerability, extract flags or security findings, and generate a verified reproduction proof.`;
+      
+      // Auto-trigger solve
+      executeSolve();
     }
 
     function updatePillsFromData(services) {
