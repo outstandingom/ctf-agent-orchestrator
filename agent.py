@@ -32,6 +32,16 @@ HF_VECTOR_URL = os.getenv("HF_VECTOR_URL", "https://outstandingom-vector.hf.spac
 HF_URL = os.getenv("HF_KNOWLEDGE_URL", "https://outstandingom-knowledge-graph-env.hf.space").strip()
 MCP_SERVER_URL = os.getenv("MCP_SERVER_URL", "https://mcp-server-2sl7.onrender.com").strip()
 MCP_API_KEY = os.getenv("MCP_API_KEY", "").strip()
+
+def get_active_mcp_url() -> str:
+    """Returns local MCP server if active on port 3000, otherwise falls back to Render cloud gateway."""
+    try:
+        r = requests.get("http://127.0.0.1:3000/health", timeout=0.4)
+        if r.status_code == 200:
+            return "http://127.0.0.1:3000"
+    except Exception:
+        pass
+    return MCP_SERVER_URL
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://vtlmgubzcktztkuymtir.supabase.co").strip()
 SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "sb_publishable_0Qoicwxg64tkFReoDSKJ3g_dOSZJPCE").strip()
 
@@ -1337,7 +1347,7 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
         }
         try:
             resp = requests.post(
-                f"{MCP_SERVER_URL}/api/test-tool",
+                f"{get_active_mcp_url()}/api/test-tool",
                 headers=headers,
                 json={"tool": target_tool, "params": tool_input},
                 timeout=15
@@ -1929,7 +1939,7 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
             current_content = None
             try:
                 read_res = requests.post(
-                    f"{MCP_SERVER_URL}/api/test-tool",
+                    f"{get_active_mcp_url()}/api/test-tool",
                     headers=headers,
                     json={"tool": "read_file", "params": {"repo": repo, "path": path, "ref": branch}},
                     timeout=15
@@ -1946,7 +1956,7 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
             if not current_content and branch != "main":
                 try:
                     read_res = requests.post(
-                        f"{MCP_SERVER_URL}/api/test-tool",
+                        f"{get_active_mcp_url()}/api/test-tool",
                         headers=headers,
                         json={"tool": "read_file", "params": {"repo": repo, "path": path, "ref": "main"}},
                         timeout=15
@@ -1987,7 +1997,7 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
             # Step 4: Commit patched file to feature branch via MCP
             try:
                 commit_res = requests.post(
-                    f"{MCP_SERVER_URL}/api/test-tool",
+                    f"{get_active_mcp_url()}/api/test-tool",
                     headers=headers,
                     json={
                         "tool": "create_or_update_file",

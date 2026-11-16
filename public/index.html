@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CTF AI Orchestrator — Unified Command Center</title>
+  <title>CTF AI Orchestrator — Autopilot Mission Control</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Marked.js for Markdown parsing -->
@@ -22,8 +22,8 @@
         extend: {
           colors: {
             cyber: {
-              bg: '#0a0d14',
-              surface: '#111726',
+              bg: '#080a0f',
+              surface: '#0f172a',
               border: '#1e293b',
               accent: '#06b6d4',
               emerald: '#10b981',
@@ -37,952 +37,452 @@
   </script>
   <style>
     body {
-      background-color: #07090e;
+      background-color: #06080d;
       color: #e2e8f0;
       font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     }
     .glass {
-      background: rgba(17, 24, 39, 0.75);
+      background: rgba(15, 23, 42, 0.85);
       backdrop-filter: blur(12px);
       border: 1px solid rgba(255, 255, 255, 0.08);
     }
     .glass-card {
-      background: rgba(15, 23, 42, 0.6);
+      background: rgba(15, 23, 42, 0.65);
       backdrop-filter: blur(8px);
       border: 1px solid rgba(56, 189, 248, 0.15);
     }
-    .neon-glow-cyan {
-      box-shadow: 0 0 20px rgba(6, 182, 212, 0.25);
+    .neon-card {
+      background: radial-gradient(circle at top left, rgba(6, 182, 212, 0.12), rgba(15, 23, 42, 0.8));
+      border: 1px solid rgba(6, 182, 212, 0.35);
+      box-shadow: 0 0 25px rgba(6, 182, 212, 0.15);
     }
-    .neon-glow-emerald {
-      box-shadow: 0 0 20px rgba(16, 185, 129, 0.25);
+    .victory-glow {
+      box-shadow: 0 0 35px rgba(16, 185, 129, 0.3);
+      animation: pulseGlow 2.5s infinite;
     }
-    ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 25px rgba(16, 185, 129, 0.25); }
+      50% { box-shadow: 0 0 45px rgba(16, 185, 129, 0.45); }
     }
-    ::-webkit-scrollbar-track {
-      background: #0b0f19;
-    }
-    ::-webkit-scrollbar-thumb {
-      background: #1e293b;
-      border-radius: 3px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-      background: #06b6d4;
-    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #080a0f; }
+    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #06b6d4; }
   </style>
 </head>
 <body class="min-h-screen flex flex-col antialiased selection:bg-cyan-500 selection:text-black">
 
   <!-- TOP STATUS NAVBAR -->
-  <header class="glass sticky top-0 z-50 border-b border-slate-800 px-6 py-3.5 flex flex-wrap items-center justify-between gap-4">
+  <header class="glass sticky top-0 z-50 border-b border-slate-800 px-6 py-3 flex flex-wrap items-center justify-between gap-4">
     <div class="flex items-center space-x-3">
-      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 via-blue-600 to-indigo-600 flex items-center justify-center font-black text-xl shadow-lg shadow-cyan-500/20">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 via-blue-600 to-emerald-500 flex items-center justify-center font-black text-xl shadow-lg shadow-cyan-500/20">
         🛡️
       </div>
       <div>
         <h1 class="text-lg font-bold text-white tracking-wide flex items-center gap-2">
           CTF AI Orchestrator
           <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-400 border border-cyan-800">
-            v2.0 • Unified Control
+            v2.2 Autopilot
           </span>
         </h1>
-        <p class="text-xs text-slate-400">ZeroGPU Vector RAG • Forensic Sandbox • Render MCP Gateway</p>
+        <p class="text-xs text-slate-400">Direct MCP Protocol • Playwright Browser • 28 Autonomous Solvers</p>
       </div>
     </div>
 
     <!-- LIVE HEALTH PILLS -->
     <div class="flex items-center gap-2.5 flex-wrap text-xs">
-      <!-- HF Vector RAG -->
-      <div id="pill-hf" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300">
-        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-        <span class="font-medium">HF Vector RAG:</span>
-        <span id="stat-hf" class="text-emerald-400 font-mono">Connecting...</span>
-      </div>
-
-      <!-- Render MCP Gateway -->
+      <!-- Direct MCP Protocol Bridge -->
       <div id="pill-mcp" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300">
         <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-        <span class="font-medium">Render MCP:</span>
-        <span id="stat-mcp" class="text-emerald-400 font-mono">Connecting...</span>
+        <span class="font-medium">Direct MCP Server:</span>
+        <span id="stat-mcp" class="text-emerald-400 font-mono">Active (:8080/sse)</span>
       </div>
 
-      <!-- DNA Knowledge Graph -->
-      <div id="pill-kg" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300">
-        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-        <span class="font-medium">DNA Graph:</span>
-        <span id="stat-kg" class="text-emerald-400 font-mono">Connecting...</span>
+      <!-- Playwright Browser -->
+      <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300">
+        <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+        <span class="font-medium">Browser:</span>
+        <span class="text-cyan-400 font-mono">Playwright Chromium</span>
       </div>
 
       <!-- Engine Selector -->
       <div class="flex items-center gap-1.5 pl-2 border-l border-slate-800">
-        <label for="provider-select" class="text-slate-400 text-xs font-semibold">Engine:</label>
+        <label for="provider-select" class="text-slate-400 text-xs font-semibold">LLM Engine:</label>
         <select id="provider-select" class="bg-slate-900 border border-slate-700 text-white text-xs rounded-lg px-2.5 py-1.5 focus:border-cyan-500 focus:outline-none font-medium">
           <option value="groq" selected>⚡ Groq (Qwen 27B LPU)</option>
           <option value="anthropic">🧠 Anthropic Claude 3.5</option>
         </select>
       </div>
+
+      <button onclick="refreshStatus()" title="Refresh connections" class="text-xs text-slate-400 hover:text-cyan-400 p-2 rounded-lg border border-slate-800 hover:border-cyan-800 transition">
+        🔄
+      </button>
     </div>
   </header>
 
-  <!-- NAVIGATION TABS -->
-  <nav class="bg-slate-950/70 border-b border-slate-800/80 px-6 py-2.5 flex items-center justify-between">
-    <div class="flex space-x-2 text-sm overflow-x-auto pb-1 sm:pb-0">
-      <button onclick="switchTab('tab-agent')" id="nav-agent" class="tab-btn px-4 py-2 rounded-lg font-medium transition flex items-center gap-2 bg-cyan-950 text-cyan-400 border border-cyan-800 whitespace-nowrap">
-        <span>🤖</span> Agent Mission Control
+  <!-- STREAMLINED 3-TAB NAVIGATION -->
+  <nav class="bg-slate-950/80 border-b border-slate-800/80 px-6 py-2.5 flex items-center justify-between">
+    <div class="flex space-x-2 text-sm overflow-x-auto">
+      <button onclick="switchTab('tab-autopilot')" id="nav-autopilot" class="tab-btn px-5 py-2 rounded-lg font-semibold transition flex items-center gap-2 bg-gradient-to-r from-cyan-950 to-blue-950 text-cyan-300 border border-cyan-700 whitespace-nowrap shadow-md shadow-cyan-900/20">
+        <span>⚡</span> 1-Click Autopilot
       </button>
-      <button onclick="switchTab('tab-rag')" id="nav-rag" class="tab-btn px-4 py-2 rounded-lg font-medium text-slate-400 hover:text-white hover:bg-slate-900 transition flex items-center gap-2 border border-transparent whitespace-nowrap">
-        <span>🧬</span> Vector RAG Explorer
+      <button onclick="switchTab('tab-tools')" id="nav-tools" class="tab-btn px-4 py-2 rounded-lg font-medium text-slate-400 hover:text-white hover:bg-slate-900 transition flex items-center gap-2 border border-transparent whitespace-nowrap">
+        <span>🛠️</span> 28-Tool Diagnostics Lab
       </button>
-      <button onclick="switchTab('tab-forensics')" id="nav-forensics" class="tab-btn px-4 py-2 rounded-lg font-medium text-slate-400 hover:text-white hover:bg-slate-900 transition flex items-center gap-2 border border-transparent whitespace-nowrap">
-        <span>🔍</span> Forensics Sandbox
-      </button>
-      <button onclick="switchTab('tab-github')" id="nav-github" class="tab-btn px-4 py-2 rounded-lg font-medium text-slate-400 hover:text-white hover:bg-slate-900 transition flex items-center gap-2 border border-transparent whitespace-nowrap">
-        <span>🐙</span> GitHub MCP Gateway
-      </button>
-      <button onclick="switchTab('tab-infra')" id="nav-infra" class="tab-btn px-4 py-2 rounded-lg font-medium text-slate-400 hover:text-white hover:bg-slate-900 transition flex items-center gap-2 border border-transparent whitespace-nowrap">
-        <span>⚡</span> Infrastructure Matrix
-      </button>
-      <button onclick="switchTab('tab-ctfd')" id="nav-ctfd" class="tab-btn px-4 py-2 rounded-lg font-medium text-slate-400 hover:text-white hover:bg-slate-900 transition flex items-center gap-2 border border-transparent whitespace-nowrap">
-        <span>🏆</span> CTFd Autopilot & Netcat
-      </button>
-      <button onclick="switchTab('tab-fuzz-symbolic')" id="nav-fuzz-symbolic" class="tab-btn px-4 py-2 rounded-lg font-medium text-slate-400 hover:text-white hover:bg-slate-900 transition flex items-center gap-2 border border-transparent whitespace-nowrap">
-        <span>🚀</span> Dynamic Fuzzing & Z3 SMT
-      </button>
-      <button onclick="switchTab('tab-swe-deploy')" id="nav-swe-deploy" class="tab-btn px-4 py-2 rounded-lg font-medium text-slate-400 hover:text-white hover:bg-slate-900 transition flex items-center gap-2 border border-transparent whitespace-nowrap">
-        <span>🛠️</span> SWE & Deploy Studio
-      </button>
-
       <button onclick="switchTab('tab-reports')" id="nav-reports" class="tab-btn px-4 py-2 rounded-lg font-medium text-slate-400 hover:text-white hover:bg-slate-900 transition flex items-center gap-2 border border-transparent whitespace-nowrap">
-        <span>📑</span> Reports & Downloads
+        <span>📑</span> Research & Benchmarks Vault (36)
       </button>
     </div>
 
-    <button onclick="refreshStatus()" class="text-xs text-slate-400 hover:text-cyan-400 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-800 hover:border-cyan-800 transition whitespace-nowrap">
-      <span>🔄</span> Ping Services
-    </button>
+    <!-- Direct MCP Protocol Tag -->
+    <div class="hidden md:flex items-center gap-2 text-xs font-mono text-slate-400">
+      <span class="px-2 py-1 bg-slate-900 border border-slate-800 rounded text-cyan-400">MCP Protocol: Direct SSE & JSON-RPC</span>
+    </div>
   </nav>
 
   <!-- MAIN VIEWPORT -->
-  <main class="flex-1 p-6 max-w-7xl mx-auto w-full">
+  <main class="flex-1 p-6 max-w-7xl mx-auto w-full space-y-6">
 
-    <!-- ========================================== -->
-    <!-- TAB 1: AGENT MISSION CONTROL               -->
-    <!-- ========================================== -->
-    <div id="tab-agent" class="tab-content space-y-6">
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+    <!-- ================================================================= -->
+    <!-- TAB 1: 1-CLICK AUTOPILOT (STREAMLINED, POWERFUL & EFFORTLESS)    -->
+    <!-- ================================================================= -->
+    <div id="tab-autopilot" class="tab-content space-y-6">
 
-        <!-- Input Column -->
-        <div class="lg:col-span-5 space-y-4">
-          <div class="glass-card rounded-2xl p-5 border border-cyan-900/40">
-            <div class="flex items-center justify-between mb-3">
-              <h2 class="text-base font-semibold text-white flex items-center gap-2">
-                <span>🎯</span> Challenge Input & Objective
-              </h2>
-              <div class="flex items-center gap-2">
-                <span id="session-badge" class="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-900 border border-slate-700 text-cyan-400 truncate max-w-[130px]">Sess: active</span>
-                <button type="button" onclick="startNewSession()" title="Start fresh conversation" class="text-[11px] px-2 py-0.5 bg-slate-800 hover:bg-cyan-950 text-slate-300 hover:text-cyan-400 rounded border border-slate-700 hover:border-cyan-800 transition">
-                  ➕ New
-                </button>
-              </div>
-            </div>
-
-            <!-- Quick Presets -->
-            <div class="mb-3">
-              <label class="text-xs text-slate-400 block mb-1.5 font-medium">Quick Challenge Presets:</label>
-              <div class="flex flex-wrap gap-1.5 text-xs">
-                <button onclick="applyPreset('prng')" class="px-2.5 py-1 bg-slate-900 hover:bg-cyan-950 border border-slate-700 hover:border-cyan-700 text-slate-300 rounded-md transition">
-                  🔑 Time PRNG XOR
-                </button>
-                <button onclick="applyPreset('steg')" class="px-2.5 py-1 bg-slate-900 hover:bg-cyan-950 border border-slate-700 hover:border-cyan-700 text-slate-300 rounded-md transition">
-                  🕵️ Zero-Width Steg
-                </button>
-                <button onclick="applyPreset('web')" class="px-2.5 py-1 bg-slate-900 hover:bg-cyan-950 border border-slate-700 hover:border-cyan-700 text-slate-300 rounded-md transition">
-                  🌐 Client Timer Bypass
-                </button>
-                <button onclick="applyPreset('rsa')" class="px-2.5 py-1 bg-slate-900 hover:bg-cyan-950 border border-slate-700 hover:border-cyan-700 text-slate-300 rounded-md transition">
-                  🔐 RSA Small e
-                </button>
-              </div>
-            </div>
-
-            <!-- Target Link Quick Injection & Bug Finder Bar -->
-            <div class="mb-4 p-3 bg-gradient-to-r from-cyan-950/40 via-slate-900/60 to-purple-950/40 border border-cyan-800/50 rounded-xl">
-              <label class="text-xs font-semibold text-cyan-400 flex items-center justify-between mb-1.5">
-                <span class="flex items-center gap-1.5"><span>🎯</span> Target URL / Live Link Investigator</span>
-                <span class="text-[10px] text-slate-400 font-mono">Autonomous Recon + Bug Finder</span>
-              </label>
-              <div class="flex items-center gap-2">
-                <input id="target-link-input" type="url" placeholder="https://target-website.com:8099 or http://127.0.0.1:8088" class="flex-1 bg-slate-950 border border-slate-700 focus:border-cyan-400 rounded-lg px-3 py-2 text-xs text-slate-100 placeholder-slate-500 font-mono focus:outline-none" />
-                <button type="button" onclick="startAutonomousLinkAudit()" class="px-3.5 py-2 bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 font-bold text-xs rounded-lg transition shadow-md shadow-cyan-500/20 whitespace-nowrap flex items-center gap-1.5">
-                  <span>⚡</span>
-                  <span>Find Bugs</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- File Attachment Widget -->
-            <div class="mb-3 flex items-center justify-between gap-2">
-              <input type="file" id="challenge-file-input" class="hidden" onchange="handleFileUpload(event)" />
-              <button type="button" onclick="document.getElementById('challenge-file-input').click()" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs rounded-lg text-slate-300 flex items-center gap-1.5 transition">
-                <span>📁</span> Attach Binary / Forensics File
-              </button>
-              <span id="upload-status" class="text-[11px] text-slate-400 font-mono truncate max-w-[220px]"></span>
-            </div>
-
-            <textarea id="challenge-prompt" rows="7" placeholder="Paste challenge description, error traces, ciphertext, or goal here..." class="w-full bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500 font-mono"></textarea>
-
-            <div class="mt-4 flex items-center justify-between">
-              <span class="text-xs text-slate-500">Autonomous tool calls enabled</span>
-              <button id="solve-btn" onclick="executeSolve()" class="px-6 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold rounded-xl transition shadow-lg shadow-cyan-500/20 flex items-center gap-2">
-                <span id="solve-spinner" class="hidden animate-spin">🌀</span>
-                <span>Solve & Formulate Solver</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- Direct Commit Widget -->
-          <div class="glass-card rounded-2xl p-5 border border-slate-800">
-            <h3 class="text-sm font-semibold text-white flex items-center gap-2 mb-3">
-              <span>🚀</span> 1-Click GitHub Deploy (via Render MCP)
-            </h3>
-            <div class="space-y-3 text-xs">
-              <div>
-                <label class="text-slate-400 block mb-1">Target Repository:</label>
-                <input id="commit-repo" type="text" value="forensic" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white font-mono focus:border-cyan-500 focus:outline-none" />
-              </div>
-              <div>
-                <label class="text-slate-400 block mb-1">Destination File Path:</label>
-                <input id="commit-path" type="text" value="solvers/ai_generated_solver.py" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white font-mono focus:border-cyan-500 focus:outline-none" />
-              </div>
-              <div>
-                <label class="text-slate-400 block mb-1">Commit Message:</label>
-                <input id="commit-msg" type="text" value="feat(solver): automated CTF solver from AI Orchestrator" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white font-mono focus:border-cyan-500 focus:outline-none" />
-              </div>
-              <button onclick="commitSolverToGitHub()" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg transition flex items-center justify-center gap-2">
-                <span>💾</span> Commit Solver to GitHub
-              </button>
-              <div id="commit-result" class="text-xs font-mono"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Output Column -->
-        <div class="lg:col-span-7 space-y-4">
-          <!-- Step Trace Accordion -->
-          <div class="glass-card rounded-2xl p-5 border border-slate-800">
-            <div class="flex items-center justify-between mb-3">
-              <h2 class="text-base font-semibold text-white flex items-center gap-2">
-                <span>🔄</span> Agent Autonomous Execution Trace
-              </h2>
-              <span id="trace-count" class="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-mono">0 tool calls</span>
-            </div>
-
-            <div id="trace-container" class="space-y-2 max-h-72 overflow-y-auto pr-2">
-              <div class="text-xs text-slate-500 italic p-3 text-center border border-dashed border-slate-800 rounded-xl">
-                Ready for task. When triggered, real-time tool calls (ZeroGPU RAG queries, Forensic inspections, Flag searches) will appear here.
-              </div>
-            </div>
-          </div>
-
-          <!-- Final Solution & Code Output -->
-          <div class="glass-card rounded-2xl p-5 border border-slate-800">
-            <div class="flex items-center justify-between mb-3">
-              <h2 class="text-base font-semibold text-white flex items-center gap-2">
-                <span>💡</span> Synthesized Solution & Exploit Script
-              </h2>
-              <button onclick="copyOutput()" class="text-xs px-3 py-1 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 transition">
-                📋 Copy Solution
-              </button>
-            </div>
-
-            <div id="solution-output" class="bg-slate-950/90 border border-slate-800/80 rounded-xl p-4 text-sm text-slate-200 overflow-x-auto min-h-[220px] max-h-[420px] overflow-y-auto leading-relaxed prose prose-invert max-w-none">
-              <p class="text-slate-500 text-xs italic">Submit a prompt on the left to see the AI agent's analysis, reasoning, and executable Python exploit script.</p>
-            </div>
-
-            <!-- Interactive Exploit Code Reviewer & Sandbox Studio -->
-            <div class="mt-4 pt-4 border-t border-slate-800/80 space-y-3">
-              <div class="flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                  <span class="text-xs font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <span>⚡</span> Exploit Code Reviewer & Live Sandbox
-                  </span>
-                  <span id="editor-status" class="text-[10px] text-slate-500 font-mono">Editable Python 3</span>
-                </div>
-                <div class="flex items-center gap-2">
-                  <button onclick="runEditorInSandbox()" id="btn-run-editor" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow transition flex items-center gap-1">
-                    <span>▶️</span> Run in Sandbox
-                  </button>
-                  <button onclick="runEditorParallelWorkers()" id="btn-run-parallel" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg shadow transition flex items-center gap-1">
-                    <span>👥</span> 4x Parallel Workers
-                  </button>
-                </div>
-              </div>
-
-              <!-- Live Editable Code Editor -->
-              <div class="relative">
-                <textarea id="exploit-code-editor" rows="8" placeholder="# Executable Python exploit script will be extracted here automatically...&#10;# You can edit, tweak parameters, and test in real time!" class="w-full bg-black/90 border border-slate-800 rounded-xl p-3 text-xs text-emerald-400 font-mono leading-relaxed focus:outline-none focus:border-cyan-500"></textarea>
-              </div>
-
-              <!-- Console Output & Flag Banner -->
-              <div id="sandbox-console-container" class="hidden space-y-2">
-                <div class="flex items-center justify-between text-xs text-slate-400 font-mono">
-                  <span>Execution Output</span>
-                  <span id="sandbox-console-time" class="text-cyan-400"></span>
-                </div>
-                <div id="sandbox-flag-banner" class="hidden p-3 rounded-lg bg-emerald-950/80 border border-emerald-500 text-emerald-300 font-mono text-xs font-bold flex items-center gap-2">
-                  <span>🎉 FLAG CAPTURED:</span> <span id="sandbox-flag-val"></span>
-                </div>
-                <pre id="sandbox-console-output" class="bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs font-mono text-slate-300 max-h-44 overflow-y-auto whitespace-pre-wrap"></pre>
-              </div>
-            </div>
-          </div>
-        </div>
-
-      </div>
-    </div>
-
-    <!-- ========================================== -->
-    <!-- TAB 2: VECTOR RAG EXPLORER                 -->
-    <!-- ========================================== -->
-    <div id="tab-rag" class="tab-content hidden space-y-6">
-      <div class="glass-card rounded-2xl p-6 border border-slate-800">
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+      <!-- HERO AUTOPILOT CONTROL CARD -->
+      <div class="neon-card rounded-2xl p-6 border border-cyan-500/30">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
           <div>
-            <h2 class="text-xl font-bold text-white flex items-center gap-2">
-              <span>🧬</span> Hugging Face ZeroGPU Vector Knowledge Store
+            <h2 class="text-xl font-extrabold text-white flex items-center gap-2.5">
+              <span>🚀</span> CTF Autonomous Autopilot
             </h2>
-            <p class="text-xs text-slate-400 mt-1">Direct semantic retrieval over past CTF challenge writeups, cryptography patterns, and exploit templates.</p>
+            <p class="text-xs text-slate-400 mt-0.5">Enter any target URL, IP, or problem description. The AI agent navigates DOM, solves SMT constraints, crafts exploits, and extracts flags with zero cheating.</p>
           </div>
-          <div class="text-xs font-mono text-cyan-400 bg-cyan-950/60 border border-cyan-800/50 px-3 py-1.5 rounded-lg">
-            Host: outstandingom-vector.hf.space (ZeroGPU A10G, 16 GB)
-          </div>
-        </div>
-
-        <div class="flex flex-col md:flex-row gap-3 mb-6">
-          <input id="rag-search-input" type="text" placeholder="Search patterns (e.g. time random seed XOR, zero width steganography, SQLi union)..." class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500 font-mono" />
-          <select id="rag-domain-select" class="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500">
-            <option value="All">All Categories</option>
-            <option value="Cryptography">Cryptography</option>
-            <option value="Forensics">Forensics</option>
-            <option value="Web">Web Exploitation</option>
-            <option value="Binary Exploitation">Binary Exploitation</option>
-          </select>
-          <button onclick="executeRAGSearch()" class="px-6 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-xl transition flex items-center gap-2">
-            <span>🔍</span> Search Knowledge Base
-          </button>
-        </div>
-
-        <!-- RAG Results Container -->
-        <div id="rag-results-container" class="space-y-4">
-          <div class="p-6 text-center text-xs text-slate-500 border border-dashed border-slate-800 rounded-xl">
-            Type keywords above to retrieve matching writeups, PRNG patterns, and solution templates directly from Hugging Face Spaces.
+          <div class="flex items-center gap-2">
+            <span id="session-badge" class="text-xs font-mono px-3 py-1 rounded-lg bg-slate-950 border border-slate-700 text-cyan-400">Session: active</span>
+            <button onclick="startNewSession()" class="text-xs px-3 py-1 bg-slate-900 hover:bg-cyan-950 text-slate-300 hover:text-cyan-400 rounded-lg border border-slate-700 transition">
+              ➕ Fresh Session
+            </button>
           </div>
         </div>
-      </div>
-    </div>
 
-    <!-- ========================================== -->
-    <!-- TAB 3: FORENSICS SANDBOX                   -->
-    <!-- ========================================== -->
-    <div id="tab-forensics" class="tab-content hidden space-y-6">
-      <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
-        <!-- Scan Inputs -->
-        <div class="md:col-span-5 space-y-4">
-          <div class="glass-card rounded-2xl p-5 border border-slate-800">
-            <h2 class="text-base font-semibold text-white flex items-center gap-2 mb-3">
-              <span>🔍</span> Forensic Sandbox Scanner
-            </h2>
-            <p class="text-xs text-slate-400 mb-4">Run the local `ForensicEngine` extractors and Flag Pattern Hunter on local files or raw text.</p>
-
-            <div class="space-y-3">
-              <div>
-                <label class="text-xs text-slate-400 block mb-1">Local File Path to Inspect:</label>
-                <input id="forensics-file-path" type="text" placeholder="e.g. c:\Users\SGI\Downloads\forensic\tests\samples\sample.png" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white font-mono focus:border-cyan-500 focus:outline-none" />
+        <!-- TARGET INPUT BAR -->
+        <div class="space-y-3">
+          <div class="relative flex flex-col sm:flex-row items-stretch gap-2.5">
+            <div class="relative flex-1">
+              <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                🌐
               </div>
-              <div>
-                <label class="text-xs text-slate-400 block mb-1">Or Paste Raw Text / Ciphertext to Scan for Flags:</label>
-                <textarea id="forensics-text-input" rows="5" placeholder="Paste strings, disassembly, or headers here..." class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white font-mono focus:border-cyan-500 focus:outline-none"></textarea>
-              </div>
-              <button onclick="executeForensicScan()" class="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-bold rounded-xl transition flex items-center justify-center gap-2">
-                <span>⚡</span> Run Forensic Inspection
-              </button>
+              <input id="challenge-prompt" type="text" placeholder="Target URL (e.g. http://127.0.0.1:8099/) or challenge description..." 
+                     class="w-full bg-slate-950 border-2 border-slate-700 focus:border-cyan-400 rounded-xl pl-10 pr-4 py-3 text-sm text-slate-100 placeholder-slate-500 font-mono focus:outline-none transition shadow-inner" />
             </div>
+            <button id="solve-btn" onclick="executeSolve()" 
+                    class="px-7 py-3 bg-gradient-to-r from-cyan-500 via-blue-600 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 font-black text-sm rounded-xl transition shadow-xl shadow-cyan-500/25 flex items-center justify-center gap-2 whitespace-nowrap active:scale-[0.98]">
+              <span id="solve-spinner" class="hidden animate-spin">🌀</span>
+              <span>⚡ Start Auto-Solve (Autopilot)</span>
+            </button>
           </div>
-        </div>
 
-        <!-- Scan Results -->
-        <div class="md:col-span-7 space-y-4">
-          <div class="glass-card rounded-2xl p-5 border border-slate-800">
-            <h2 class="text-base font-semibold text-white flex items-center gap-2 mb-3">
-              <span>🚩</span> Flag Hunter & Forensic Report
-            </h2>
-            <pre id="forensics-output" class="bg-slate-950 border border-slate-800 rounded-xl p-4 text-xs font-mono text-emerald-400 max-h-[500px] overflow-y-auto whitespace-pre-wrap">Awaiting inspection target...</pre>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ========================================== -->
-    <!-- TAB 4: GITHUB MCP GATEWAY                  -->
-    <!-- ========================================== -->
-    <div id="tab-github" class="tab-content hidden space-y-6">
-      <div class="glass-card rounded-2xl p-6 border border-slate-800">
-        <div class="flex items-center justify-between mb-6">
-          <div>
-            <h2 class="text-xl font-bold text-white flex items-center gap-2">
-              <span>🐙</span> GitHub MCP Server Gateway (Live on Render)
-            </h2>
-            <p class="text-xs text-slate-400 mt-1">Autonomous file reader, code committer, and repository manager with 2-Step Deletion Protection.</p>
-          </div>
-          <button onclick="fetchGitHubRepos()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs text-white font-semibold rounded-lg transition flex items-center gap-1.5">
-            <span>🔄</span> Fetch Repositories
-          </button>
-        </div>
-
-        <div id="github-repos-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div class="col-span-full text-center text-xs text-slate-500 py-8 border border-dashed border-slate-800 rounded-xl">
-            Click "Fetch Repositories" above to list all repositories accessible via your Render MCP Gateway.
+          <!-- 1-CLICK QUICK PRESETS -->
+          <div class="flex flex-wrap items-center gap-2 pt-1 text-xs">
+            <span class="text-slate-400 font-medium">Quick Presets:</span>
+            <button onclick="loadAutopilotPreset('apex')" class="px-3 py-1.5 bg-slate-900 hover:bg-cyan-950 border border-slate-700 hover:border-cyan-600 text-cyan-300 rounded-lg transition font-mono flex items-center gap-1.5">
+              <span>🛡️</span> Apex Gauntlet (:8099)
+            </button>
+            <button onclick="loadAutopilotPreset('quantum')" class="px-3 py-1.5 bg-slate-900 hover:bg-cyan-950 border border-slate-700 hover:border-cyan-600 text-cyan-300 rounded-lg transition font-mono flex items-center gap-1.5">
+              <span>🔐</span> Quantum Vault (:8088)
+            </button>
+            <button onclick="loadAutopilotPreset('z3')" class="px-3 py-1.5 bg-slate-900 hover:bg-cyan-950 border border-slate-700 hover:border-cyan-600 text-cyan-300 rounded-lg transition font-mono flex items-center gap-1.5">
+              <span>⚡</span> Z3 SMT Constraint Crackme
+            </button>
+            <button onclick="loadAutopilotPreset('wiener')" class="px-3 py-1.5 bg-slate-900 hover:bg-cyan-950 border border-slate-700 hover:border-cyan-600 text-cyan-300 rounded-lg transition font-mono flex items-center gap-1.5">
+              <span>🔑</span> RSA Wiener Attack
+            </button>
+            <button onclick="testDirectMcpConnection()" class="px-3 py-1.5 bg-purple-950 hover:bg-purple-900 border border-purple-700 text-purple-300 rounded-lg transition font-mono flex items-center gap-1.5 ml-auto">
+              <span>🌐</span> Test Direct MCP Protocol
+            </button>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- ========================================== -->
-    <!-- TAB 5: INFRASTRUCTURE MATRIX               -->
-    <!-- ========================================== -->
-    <div id="tab-infra" class="tab-content hidden space-y-6">
-      <div class="glass-card rounded-2xl p-6 border border-slate-800">
-        <h2 class="text-xl font-bold text-white flex items-center gap-2 mb-6">
-          <span>⚡</span> Distributed Ecosystem Infrastructure Matrix
-        </h2>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-
-          <!-- Card 1: Vector RAG -->
-          <div class="bg-slate-950 border border-cyan-900/50 rounded-xl p-5 space-y-3">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-bold text-cyan-400 uppercase tracking-wider">Module 1</span>
-              <span class="px-2 py-0.5 rounded-full text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800">ZeroGPU</span>
-            </div>
-            <h3 class="text-base font-bold text-white">Hugging Face Vector RAG</h3>
-            <p class="text-xs text-slate-400">Lightweight TF-IDF & cosine vector store pre-seeded with 11 challenge patterns and exploit templates.</p>
-            <div class="text-[11px] font-mono text-slate-300 space-y-1 bg-slate-900/80 p-2.5 rounded-lg">
-              <div>Hardware: 2 vCPU, 16 GB RAM (A10G)</div>
-              <div>SDK: Gradio 5.16.0 + FastAPI</div>
-              <div class="truncate text-cyan-400">outstandingom-vector.hf.space</div>
-            </div>
-            <a href="https://huggingface.co/spaces/OutstandingOm/vector" target="_blank" class="inline-block text-xs text-cyan-400 hover:underline">
-              Open Space in Hugging Face ↗
-            </a>
+      <!-- VISUAL 5-PHASE FINITE STATE MACHINE (FSM) STEPPER -->
+      <div class="glass-card rounded-2xl p-4 border border-slate-800">
+        <div class="flex items-center justify-between mb-3 px-1">
+          <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Autonomous FSM Pipeline Progress</span>
+          <span id="fsm-status-badge" class="text-xs font-mono text-cyan-400">Idle / Ready</span>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-3 text-center">
+          <!-- Phase 1 -->
+          <div id="step-phase-1" class="p-3 rounded-xl bg-slate-900 border border-slate-800 transition">
+            <div class="text-base mb-1">1️⃣ 🌐</div>
+            <div class="text-xs font-bold text-slate-300">Reconnaissance</div>
+            <div class="text-[10px] text-slate-500 font-mono mt-0.5">Playwright / Web Probe</div>
           </div>
-
-          <!-- Card 2: Render MCP -->
-          <div class="bg-slate-950 border border-blue-900/50 rounded-xl p-5 space-y-3">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-bold text-blue-400 uppercase tracking-wider">Module 2</span>
-              <span class="px-2 py-0.5 rounded-full text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800">Express MCP</span>
-            </div>
-            <h3 class="text-base font-bold text-white">GitHub Lifetime MCP Gateway</h3>
-            <p class="text-xs text-slate-400">Streamable HTTP SSE gateway connecting autonomous agents to GitHub repositories with 2-Step Safety Lock.</p>
-            <div class="text-[11px] font-mono text-slate-300 space-y-1 bg-slate-900/80 p-2.5 rounded-lg">
-              <div>Protocol: MCP (Model Context Protocol)</div>
-              <div>Keep-Alive: Self-ping loop enabled</div>
-              <div class="truncate text-blue-400">mcp-server-2sl7.onrender.com</div>
-            </div>
-            <a href="https://mcp-server-2sl7.onrender.com" target="_blank" class="inline-block text-xs text-blue-400 hover:underline">
-              Open Render MCP Dashboard ↗
-            </a>
+          <!-- Phase 2 -->
+          <div id="step-phase-2" class="p-3 rounded-xl bg-slate-900 border border-slate-800 transition">
+            <div class="text-base mb-1">2️⃣ 🧬</div>
+            <div class="text-xs font-bold text-slate-300">Vulnerability Analysis</div>
+            <div class="text-[10px] text-slate-500 font-mono mt-0.5">DNA Graph & SMT</div>
           </div>
-
-          <!-- Card 3: DNA Graph -->
-          <div class="bg-slate-950 border border-purple-900/50 rounded-xl p-5 space-y-3">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-bold text-purple-400 uppercase tracking-wider">Core DNA</span>
-              <span class="px-2 py-0.5 rounded-full text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800">Reasoning</span>
-            </div>
-            <h3 class="text-base font-bold text-white">DNA Knowledge Graph</h3>
-            <p class="text-xs text-slate-400">Self-evolving knowledge graph environment indexing concepts, essence, and continuous multi-hop relationships.</p>
-            <div class="text-[11px] font-mono text-slate-300 space-y-1 bg-slate-900/80 p-2.5 rounded-lg">
-              <div>Storage: 12 Indexed Concept Nodes</div>
-              <div>Frontend: D3 Force-Directed Graph</div>
-              <div class="truncate text-purple-400">outstandingom-knowledge-graph-env.hf.space</div>
-            </div>
-            <a href="https://huggingface.co/spaces/OutstandingOm/knowledge-graph-env" target="_blank" class="inline-block text-xs text-purple-400 hover:underline">
-              Open DNA Space in Hugging Face ↗
-            </a>
+          <!-- Phase 3 -->
+          <div id="step-phase-3" class="p-3 rounded-xl bg-slate-900 border border-slate-800 transition">
+            <div class="text-base mb-1">3️⃣ ⚙️</div>
+            <div class="text-xs font-bold text-slate-300">Exploit Synthesis</div>
+            <div class="text-[10px] text-slate-500 font-mono mt-0.5">Python Sandbox</div>
           </div>
-
+          <!-- Phase 4 -->
+          <div id="step-phase-4" class="p-3 rounded-xl bg-slate-900 border border-slate-800 transition">
+            <div class="text-base mb-1">4️⃣ 📸</div>
+            <div class="text-xs font-bold text-slate-300">Proof Verification</div>
+            <div class="text-[10px] text-slate-500 font-mono mt-0.5">Victory Screenshot</div>
+          </div>
+          <!-- Phase 5 -->
+          <div id="step-phase-5" class="p-3 rounded-xl bg-slate-900 border border-slate-800 transition">
+            <div class="text-base mb-1">5️⃣ 🏆</div>
+            <div class="text-xs font-bold text-slate-300">Flag Captured</div>
+            <div class="text-[10px] text-slate-500 font-mono mt-0.5">Zero Hallucination</div>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- ========================================== -->
-    <!-- TAB 6: CTFD AUTOPILOT & NETCAT PROBE       -->
-    <!-- ========================================== -->
-    <div id="tab-ctfd" class="tab-content hidden space-y-6">
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
-        <!-- Left: CTFd API Integration -->
-        <div class="lg:col-span-7 glass-card rounded-2xl p-6 border border-slate-800 space-y-5">
-          <div class="flex items-center justify-between border-b border-slate-800/80 pb-4">
-            <div>
-              <h2 class="text-lg font-bold text-white flex items-center gap-2">
-                <span>🏆</span> CTFd Competition Autopilot
-              </h2>
-              <p class="text-xs text-slate-400">Direct integration with CTFd REST APIs to ingest challenges, download binaries, and auto-submit flags.</p>
+      <!-- CAPTURED FLAG VICTORY CARD (LIGHTS UP UPON CAPTURE) -->
+      <div id="flag-victory-card" class="hidden victory-glow bg-gradient-to-r from-emerald-950 via-slate-900 to-cyan-950 border-2 border-emerald-500 rounded-2xl p-6">
+        <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+          <div class="space-y-1 text-center md:text-left">
+            <div class="flex items-center justify-center md:justify-start gap-2">
+              <span class="text-2xl">🎉</span>
+              <span class="text-xs font-black uppercase tracking-wider text-emerald-400 bg-emerald-950/80 px-2.5 py-1 rounded border border-emerald-700">
+                Flag Extracted & Verified
+              </span>
+              <span id="solve-time-badge" class="text-xs font-mono text-cyan-400">⏱️ 0.0s</span>
             </div>
-            <span class="px-2.5 py-1 rounded-full text-[10px] font-mono bg-cyan-950 text-cyan-400 border border-cyan-800">REST v1</span>
+            <div id="flag-display-text" class="text-2xl sm:text-3xl font-black font-mono text-emerald-300 select-all tracking-wider py-1">
+              HQX{...}
+            </div>
+            <p class="text-xs text-slate-400">Cryptographically extracted and verified through live headless browser and SMT execution.</p>
           </div>
-
-          <!-- Connection Inputs -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label class="block text-xs font-medium text-slate-300 mb-1">CTFd Platform Base URL</label>
-              <input type="text" id="ctfd-url" placeholder="https://ctf.hackquest.tcs.com or http://localhost:8000" value="https://demo.ctfd.io" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">
-            </div>
-            <div>
-              <label class="block text-xs font-medium text-slate-300 mb-1">User Token / Session Cookie</label>
-              <input type="password" id="ctfd-token" placeholder="ctfd_... or session=eyJ..." class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">
-            </div>
-          </div>
-
           <div class="flex items-center gap-3">
-            <button onclick="fetchCTFdChallenges()" id="btn-fetch-ctfd" class="px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-semibold rounded-lg shadow transition flex items-center gap-1.5">
-              <span>📥</span> Fetch Active Challenges
+            <button onclick="copyExtractedFlag()" class="px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-sm rounded-xl transition shadow-lg shadow-emerald-500/30 flex items-center gap-2">
+              <span>📋</span> Copy Flag
             </button>
-            <button onclick="fetchCTFdScoreboard()" class="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 text-xs font-medium rounded-lg transition flex items-center gap-1.5">
-              <span>📊</span> Scoreboard
-            </button>
-            <span id="ctfd-status" class="text-xs text-slate-400 font-mono"></span>
-          </div>
-
-          <!-- Challenge List Container -->
-          <div class="space-y-2">
-            <div class="flex items-center justify-between text-xs font-semibold text-slate-400 uppercase tracking-wider px-1">
-              <span>Available Challenges</span>
-              <span id="ctfd-count" class="text-cyan-400 font-mono">0 loaded</span>
-            </div>
-            <div id="ctfd-challenges-list" class="max-h-96 overflow-y-auto space-y-2 pr-1">
-              <div class="text-center text-xs text-slate-500 py-10 border border-dashed border-slate-800 rounded-xl">
-                Enter your CTFd credentials above and click "Fetch Active Challenges" to pull the competition scoreboard.
-              </div>
-            </div>
           </div>
         </div>
-
-        <!-- Right: Interactive Netcat / Socket Tester -->
-        <div class="lg:col-span-5 glass-card rounded-2xl p-6 border border-slate-800 space-y-5">
-          <div class="flex items-center justify-between border-b border-slate-800/80 pb-4">
-            <div>
-              <h2 class="text-lg font-bold text-white flex items-center gap-2">
-                <span>🔌</span> Netcat / TCP Socket Probe
-              </h2>
-              <p class="text-xs text-slate-400">Connect to remote challenge netcat daemons, send payloads, and capture flags.</p>
-            </div>
-            <span class="px-2.5 py-1 rounded-full text-[10px] font-mono bg-emerald-950 text-emerald-400 border border-emerald-800">Raw TCP</span>
-          </div>
-
-          <div class="grid grid-cols-3 gap-3">
-            <div class="col-span-2">
-              <label class="block text-xs font-medium text-slate-300 mb-1">Target Host / IP</label>
-              <input type="text" id="socket-host" placeholder="challenge.hackquest.com" value="httpbin.org" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">
-            </div>
-            <div>
-              <label class="block text-xs font-medium text-slate-300 mb-1">Port</label>
-              <input type="number" id="socket-port" placeholder="1337" value="80" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">
-            </div>
-          </div>
-
-          <div>
-            <label class="block text-xs font-medium text-slate-300 mb-1">Payload to Send (Text or hex:414243)</label>
-            <textarea id="socket-payload" rows="2" placeholder="e.g. GET / HTTP/1.1\r\nHost: target\r\n\r\n or hex:deadbeef" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">GET /status/200 HTTP/1.1&#10;Host: httpbin.org&#10;&#10;</textarea>
-          </div>
-
-          <div class="flex items-center justify-between">
-            <button onclick="probeSocketTerminal()" id="btn-probe-socket" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow transition flex items-center gap-1.5">
-              <span>⚡</span> Send & Read Response
-            </button>
-            <span id="socket-status" class="text-xs text-slate-400 font-mono"></span>
-          </div>
-
-          <!-- Socket Terminal Output -->
-          <div>
-            <label class="block text-xs font-medium text-slate-300 mb-1">Socket Terminal Output</label>
-            <div id="socket-output" class="bg-black border border-slate-800 rounded-xl p-3.5 text-emerald-400 font-mono text-xs max-h-64 overflow-y-auto whitespace-pre-wrap">Ready to connect...</div>
-          </div>
-        </div>
-
       </div>
-    </div>
 
-    <!-- ========================================== -->
-    <!-- TAB 7: DYNAMIC FUZZING, Z3 SMT & WSL BRIDGE -->
-    <!-- ========================================== -->
-    <div id="tab-fuzz-symbolic" class="tab-content hidden space-y-6">
+      <!-- SPLIT VIEW: LIVE AGENT LOGS & PLAYWRIGHT VISUAL PROOF -->
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-        <!-- Left: Dynamic Web Fuzzing Engine -->
-        <div class="lg:col-span-7 glass-card rounded-2xl p-6 border border-slate-800 space-y-5">
-          <div class="flex items-center justify-between border-b border-slate-800/80 pb-4">
-            <div>
-              <h2 class="text-lg font-bold text-white flex items-center gap-2">
-                <span>🚀</span> Dynamic Web Fuzzer
-              </h2>
-              <p class="text-xs text-slate-400">Differential injection analysis powered by ZeroGPU Vector RAG & DNA Knowledge Graph.</p>
+        <!-- Left Pane: Real-time Agent Action Feed (7 Cols) -->
+        <div class="lg:col-span-7 space-y-4">
+          <div class="glass-card rounded-2xl p-5 border border-slate-800">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                <span>🤖</span> Autonomous Execution Feed
+              </h3>
+              <span id="trace-count" class="text-xs font-mono text-cyan-400 bg-slate-900 px-2.5 py-1 rounded border border-slate-800">0 tool calls</span>
             </div>
-            <span class="px-2.5 py-1 rounded-full text-[10px] font-mono bg-cyan-950 text-cyan-400 border border-cyan-800">Vector-Guided</span>
-          </div>
-
-          <div class="space-y-3">
-            <div>
-              <label class="block text-xs font-medium text-slate-300 mb-1">Target URL (Use FUZZ or query parameter)</label>
-              <input type="text" id="fuzz-url" placeholder="https://challenge.tcs.com/search?q=FUZZ or https://httpbin.org/get" value="https://httpbin.org/get" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label class="block text-xs font-medium text-slate-300 mb-1">Attack Category</label>
-                <select id="fuzz-category" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">
-                  <option value="SQLi" selected>SQL Injection</option>
-                  <option value="SSTI">SSTI (Template Injection)</option>
-                  <option value="CommandInjection">Command Injection</option>
-                  <option value="PathTraversal">Path Traversal</option>
-                  <option value="AuthBypass">Auth Bypass (NoSQL/SQL)</option>
-                  <option value="IDOR">IDOR</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-xs font-medium text-slate-300 mb-1">HTTP Method</label>
-                <select id="fuzz-method" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">
-                  <option value="GET" selected>GET</option>
-                  <option value="POST">POST</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-xs font-medium text-slate-300 mb-1">Param Name (optional)</label>
-                <input type="text" id="fuzz-param" placeholder="id, search, query" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">
-              </div>
-            </div>
-
-            <div class="flex items-center justify-between pt-1">
-              <button onclick="executeDynamicFuzzing()" id="btn-run-fuzzer" class="px-5 py-2.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-bold rounded-lg shadow-lg shadow-cyan-500/20 transition flex items-center gap-2">
-                <span>⚡</span> Launch Dynamic Fuzzing
-              </button>
-              <span id="fuzz-status" class="text-xs text-slate-400 font-mono"></span>
-            </div>
-          </div>
-
-          <!-- Fuzzer Results Container -->
-          <div class="space-y-2 pt-2">
-            <div class="flex items-center justify-between text-xs font-semibold text-slate-400 uppercase tracking-wider px-1">
-              <span>Differential Audit Findings</span>
-              <span id="fuzz-count" class="text-cyan-400 font-mono">0 anomalies</span>
-            </div>
-            <div id="fuzz-results" class="max-h-80 overflow-y-auto space-y-2 pr-1">
-              <div class="text-center text-xs text-slate-500 py-8 border border-dashed border-slate-800 rounded-xl">
-                Ready to probe. Select a target URL and attack category to begin vector-guided differential fuzzing.
+            <div id="trace-container" class="space-y-2.5 max-h-[460px] overflow-y-auto pr-1">
+              <div class="text-xs text-slate-500 p-8 text-center font-mono">
+                Ready for task. Enter target URL or select a preset above and click "Start Auto-Solve".
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Right: Symbolic Execution & Z3 SMT Solver -->
-        <div class="lg:col-span-5 glass-card rounded-2xl p-6 border border-slate-800 space-y-5">
-          <div class="flex items-center justify-between border-b border-slate-800/80 pb-4">
-            <div>
-              <h2 class="text-lg font-bold text-white flex items-center gap-2">
-                <span>🧮</span> Z3 Symbolic SMT Solver
-              </h2>
-              <p class="text-xs text-slate-400">Solve crackme branch conditions, bitwise XOR, modular equations, and crack byte constraints.</p>
-            </div>
-            <span class="px-2.5 py-1 rounded-full text-[10px] font-mono bg-indigo-950 text-indigo-400 border border-indigo-800">Z3 v4.13</span>
-          </div>
+        <!-- Right Pane: Playwright Visual Evidence & Exploit Script (5 Cols) -->
+        <div class="lg:col-span-5 space-y-4">
 
-          <div class="space-y-3">
-            <div>
-              <label class="block text-xs font-medium text-slate-300 mb-1">Constraints / Equations (or full Z3 script)</label>
-              <textarea id="symbolic-constraints" rows="5" placeholder="flag[0] ^ 0x42 == 100&#10;flag[1] + 10 == 75&#10;(flag[2] << 1) == 130" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">flag[0] ^ 0x42 == 100
-flag[1] + 10 == 75
-(flag[2] << 1) == 130</textarea>
+          <!-- Playwright Screenshot Proof Card -->
+          <div class="glass-card rounded-2xl p-5 border border-slate-800">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                <span>📸</span> Browser Visual Proof
+              </h3>
+              <a href="/docs-files/images/playwright_proof.png" target="_blank" class="text-xs text-cyan-400 hover:underline font-mono">Open Full Size ↗</a>
             </div>
-
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <label class="block text-xs font-medium text-slate-300 mb-1">Target Var</label>
-                <input type="text" id="symbolic-target" value="flag" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">
-              </div>
-              <div>
-                <label class="block text-xs font-medium text-slate-300 mb-1">Byte Length</label>
-                <input type="number" id="symbolic-length" value="3" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">
+            <div class="bg-black/80 rounded-xl overflow-hidden border border-slate-800 aspect-video flex items-center justify-center relative group">
+              <img id="browser-proof-img" src="/docs-files/images/playwright_proof.png" onerror="this.src='/docs-files/images/apex_gauntlet_victory_proof.png'" alt="Browser Proof" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+              <div class="absolute bottom-2 left-2 px-2 py-1 bg-black/80 text-[10px] text-cyan-400 font-mono rounded border border-slate-800">
+                Headless Chromium Proof
               </div>
             </div>
+          </div>
 
-            <div class="flex items-center justify-between">
-              <button onclick="executeSymbolicSolve()" id="btn-run-symbolic" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg shadow transition flex items-center gap-1.5">
-                <span>📐</span> Solve with Z3 SMT
-              </button>
-              <span id="symbolic-status" class="text-xs text-slate-400 font-mono"></span>
+          <!-- Exploit Code Preview Card -->
+          <div class="glass-card rounded-2xl p-5 border border-slate-800">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                <span>🐍</span> Generated Python Exploit
+              </h3>
+              <button onclick="copyExploitCode()" class="text-xs text-cyan-400 hover:text-cyan-300 font-mono">Copy Code</button>
             </div>
+            <textarea id="exploit-code-editor" rows="6" readonly class="w-full bg-black/90 border border-slate-800 rounded-xl p-3 text-xs text-emerald-400 font-mono leading-relaxed focus:outline-none select-all" placeholder="# Autonomous Python exploit will appear here automatically..."></textarea>
+          </div>
 
-            <div>
-              <label class="block text-xs font-medium text-slate-300 mb-1">Solved String / ASCII Result</label>
-              <div id="symbolic-output" class="bg-black border border-slate-800 rounded-xl p-3.5 text-emerald-400 font-mono text-xs max-h-48 overflow-y-auto whitespace-pre-wrap">Awaiting constraints...</div>
+          <!-- Direct MCP Server Info Card -->
+          <div class="glass-card rounded-2xl p-4 border border-purple-900/40 bg-purple-950/10">
+            <div class="flex items-center justify-between mb-2">
+              <h4 class="text-xs font-bold text-purple-300 flex items-center gap-1.5">
+                <span>🌐</span> Direct MCP Protocol Server Active
+              </h4>
+              <span class="text-[10px] text-emerald-400 font-mono bg-emerald-950 px-2 py-0.5 rounded border border-emerald-800">29 Tools</span>
+            </div>
+            <p class="text-[11px] text-slate-400 leading-normal mb-2">
+              External tools (Claude Desktop, Cursor, CLI) can connect directly to this local AI agent:
+            </p>
+            <div class="bg-black/60 rounded-lg p-2 font-mono text-[11px] text-purple-300 space-y-1">
+              <div>SSE: <span class="text-slate-300">http://127.0.0.1:8080/sse</span></div>
+              <div>RPC: <span class="text-slate-300">http://127.0.0.1:8080/mcp</span></div>
             </div>
           </div>
+
         </div>
 
       </div>
 
-      <!-- Full-Width Bottom: WSL2 Linux Subsystem Bridge -->
-      <div class="glass-card rounded-2xl p-6 border border-slate-800 space-y-4">
-        <div class="flex items-center justify-between border-b border-slate-800/80 pb-4">
-          <div>
-            <h2 class="text-base font-bold text-white flex items-center gap-2">
-              <span>🐧</span> WSL2 Linux Subsystem Bridge
-            </h2>
-            <p class="text-xs text-slate-400">Directly execute Linux terminal commands, checksec, readelf, and ELF binaries.</p>
-          </div>
-          <span class="px-2.5 py-1 rounded-full text-[10px] font-mono bg-amber-950 text-amber-400 border border-amber-800">Linux Bridge</span>
-        </div>
-
-        <div class="flex gap-3">
-          <input type="text" id="wsl-command" placeholder="uname -a || checksec --file=./binary || python3 exploit.py" value="uname -a" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3.5 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">
-          <button onclick="executeWSLCommand()" id="btn-run-wsl" class="px-5 py-2 bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold rounded-lg shadow transition flex items-center gap-1.5 whitespace-nowrap">
-            <span>💻</span> Run in WSL2
-          </button>
-        </div>
-
-        <div id="wsl-output" class="bg-black border border-slate-800 rounded-xl p-3.5 text-emerald-400 font-mono text-xs max-h-48 overflow-y-auto whitespace-pre-wrap">WSL2 terminal output will appear here.</div>
-      </div>
     </div>
 
-    <!-- ========================================== -->
-    <!-- TAB 8: SWE & DEPLOYMENT STUDIO             -->
-    <!-- ========================================== -->
-    <div id="tab-swe-deploy" class="tab-content hidden space-y-6">
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+    <!-- ================================================================= -->
+    <!-- TAB 2: 28-TOOL DIAGNOSTICS LAB (COLLAPSIBLE / ADVANCED SUITE)    -->
+    <!-- ================================================================= -->
+    <div id="tab-tools" class="tab-content hidden space-y-6">
 
-        <!-- Left Column: Search & Replace Non-Destructive Patch Editor -->
-        <div class="lg:col-span-7 space-y-6">
-          <div class="glass-card rounded-2xl p-5 border border-cyan-800/40 space-y-4">
+      <div class="glass-card rounded-2xl p-5 border border-slate-800">
+        <h2 class="text-lg font-bold text-white flex items-center gap-2 mb-1">
+          <span>🛠️</span> 28-Engine Specialized Diagnostics Laboratory
+        </h2>
+        <p class="text-xs text-slate-400 mb-4">Direct testing consoles for all 28 specialized cybersecurity engines.</p>
+
+        <!-- Tool Category Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+          <!-- 1. Z3 SMT Solver -->
+          <div class="p-4 bg-slate-900/90 rounded-xl border border-slate-800 space-y-3">
             <div class="flex items-center justify-between">
-              <div>
-                <h2 class="text-base font-bold text-white flex items-center gap-2">
-                  <span>🧩</span> Non-Destructive Search-and-Replace Patch Engine
-                </h2>
-                <p class="text-xs text-slate-400">Patches exact code chunks safely. No full-file rewrites, truncation, or broken helper methods.</p>
-              </div>
-              <button onclick="loadCorsExample()" class="text-[11px] px-2.5 py-1 rounded bg-cyan-950 text-cyan-400 border border-cyan-800 hover:bg-cyan-900 transition">
-                ⚡ Load CORS Example
-              </button>
+              <span class="text-xs font-bold text-cyan-400">Symbolic Z3 SMT Solver</span>
+              <span class="text-[10px] font-mono text-slate-500">Tool #16</span>
             </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label class="text-[11px] text-slate-400 block mb-1">Target File Path</label>
-                <input type="text" id="swe-patch-path" placeholder="server.py or src/index.ts" value="server.py" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white font-mono focus:border-cyan-500 focus:outline-none">
-              </div>
-              <div>
-                <label class="text-[11px] text-slate-400 block mb-1">Target Repo (optional)</label>
-                <input type="text" id="swe-patch-repo" placeholder="ctf-agent-orchestrator (or local)" value="" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white font-mono focus:border-cyan-500 focus:outline-none">
-              </div>
-              <div>
-                <label class="text-[11px] text-slate-400 block mb-1">Branch</label>
-                <input type="text" id="swe-patch-branch" placeholder="ai/fix-cors-42" value="main" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white font-mono focus:border-cyan-500 focus:outline-none">
-              </div>
-            </div>
-
-            <div>
-              <label class="text-[11px] text-slate-400 block mb-1">Commit Message</label>
-              <input type="text" id="swe-patch-msg" placeholder="fix(cors): restrict allowed origins from env config" value="fix(swe): non-destructive code patch" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white font-mono focus:border-cyan-500 focus:outline-none">
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label class="text-[11px] text-rose-400 font-semibold block mb-1">Search Block (Exact characters to replace)</label>
-                <textarea id="swe-patch-search" rows="5" placeholder="Paste exact target code block with matching indentation..." class="w-full bg-slate-950 border border-rose-900/50 rounded-lg p-2.5 text-xs text-rose-200 font-mono focus:border-rose-500 focus:outline-none"></textarea>
-              </div>
-              <div>
-                <label class="text-[11px] text-emerald-400 font-semibold block mb-1">Replace Block (New replacement snippet)</label>
-                <textarea id="swe-patch-replace" rows="5" placeholder="Paste new replacement code block..." class="w-full bg-slate-950 border border-emerald-900/50 rounded-lg p-2.5 text-xs text-emerald-200 font-mono focus:border-emerald-500 focus:outline-none"></textarea>
-              </div>
-            </div>
-
-            <div class="flex items-center justify-between pt-1">
-              <span class="text-xs text-slate-500">Atomic Search & Replace with safety validation</span>
-              <button onclick="applySearchReplacePatch()" id="btn-apply-patch" class="px-5 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs rounded-lg transition shadow-lg shadow-emerald-600/20 flex items-center gap-1.5">
-                <span>⚡</span> Apply Patch Block
-              </button>
-            </div>
-
-            <div id="swe-patch-output" class="bg-black border border-slate-800 rounded-xl p-3.5 text-emerald-400 font-mono text-xs max-h-48 overflow-y-auto whitespace-pre-wrap">Patch engine output will appear here.</div>
+            <textarea id="lab-z3-constraints" rows="3" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs font-mono text-slate-200" placeholder="flag[0] ^ 0x5A == 105"></textarea>
+            <button onclick="runLabZ3()" class="w-full py-2 bg-cyan-950 hover:bg-cyan-900 border border-cyan-800 text-cyan-300 text-xs font-bold rounded-lg transition">
+              Run SMT Solver
+            </button>
+            <div id="lab-z3-out" class="text-[11px] font-mono text-slate-400 truncate">Result ready...</div>
           </div>
 
-          <!-- Fullstack Terminal Sandbox -->
-          <div class="glass-card rounded-2xl p-5 border border-indigo-900/40 space-y-4">
+          <!-- 2. CyberChef Crypto Analyzer -->
+          <div class="p-4 bg-slate-900/90 rounded-xl border border-slate-800 space-y-3">
             <div class="flex items-center justify-between">
-              <div>
-                <h2 class="text-base font-bold text-white flex items-center gap-2">
-                  <span>🖥️</span> Full-Stack Execution Terminal & Build Sandbox
-                </h2>
-                <p class="text-xs text-slate-400">Run builds, dependency installs, tests, and database migrations (Node, Python, Docker, Prisma).</p>
-              </div>
-              <span class="px-2.5 py-1 rounded-full text-[10px] font-mono bg-indigo-950 text-indigo-400 border border-indigo-800">Persistent Shell</span>
+              <span class="text-xs font-bold text-cyan-400">CyberChef Decoder</span>
+              <span class="text-[10px] font-mono text-slate-500">Tool #03</span>
             </div>
-
-            <div class="flex flex-wrap gap-1.5 text-xs">
-              <button onclick="setTermCommand('npm run build')" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 rounded font-mono">npm run build</button>
-              <button onclick="setTermCommand('pytest tests/ -v')" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 rounded font-mono">pytest tests/</button>
-              <button onclick="setTermCommand('git status -s')" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 rounded font-mono">git status</button>
-              <button onclick="setTermCommand('git diff --stat')" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 rounded font-mono">git diff</button>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
-              <div class="sm:col-span-8">
-                <input type="text" id="swe-term-cmd" placeholder="npm run build || pytest || docker ps" value="git status -s" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3.5 py-2 text-xs text-white font-mono focus:border-cyan-500 focus:outline-none">
-              </div>
-              <div class="sm:col-span-4">
-                <input type="text" id="swe-term-cwd" placeholder="Working dir (optional)" value="" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white font-mono focus:border-cyan-500 focus:outline-none">
-              </div>
-            </div>
-
-            <div class="flex justify-end">
-              <button onclick="runTerminalCommand()" id="btn-run-terminal" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs rounded-lg transition flex items-center gap-1.5">
-                <span>▶️</span> Run in Terminal
-              </button>
-            </div>
-
-            <div id="swe-term-output" class="bg-black border border-slate-800 rounded-xl p-3.5 text-cyan-300 font-mono text-xs max-h-56 overflow-y-auto whitespace-pre-wrap">Terminal execution log will stream here.</div>
-          </div>
-        </div>
-
-        <!-- Right Column: Git Branching & PR Manager + DNA Memory -->
-        <div class="lg:col-span-5 space-y-6">
-
-          <!-- Isolated Branch & PR Suite -->
-          <div class="glass-card rounded-2xl p-5 border border-purple-900/40 space-y-4">
-            <div class="flex items-center justify-between">
-              <div>
-                <h2 class="text-base font-bold text-white flex items-center gap-2">
-                  <span>🌿</span> Safe Branching & PR Suite
-                </h2>
-                <p class="text-xs text-slate-400">Eliminates Direct-to-Main hazard. Auto-branch, verify, and PR.</p>
-              </div>
-              <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-purple-950 text-purple-400 border border-purple-800">Render MCP</span>
-            </div>
-
-            <!-- Create Branch Section -->
-            <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-800 space-y-2">
-              <span class="text-xs font-semibold text-purple-300 block">1. Create Isolated Feature Branch</span>
-              <div class="grid grid-cols-2 gap-2">
-                <input type="text" id="swe-branch-repo" placeholder="Repo (e.g. ctf-agent-orchestrator)" value="ctf-agent-orchestrator" class="bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-white font-mono">
-                <input type="text" id="swe-branch-name" placeholder="Branch (e.g. ai/fix-issue-42)" value="ai/fix-feature-sandbox" class="bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-white font-mono">
-              </div>
-              <button onclick="createGitBranch()" id="btn-create-branch" class="w-full py-1.5 bg-purple-700 hover:bg-purple-600 text-white text-xs font-semibold rounded transition flex items-center justify-center gap-1">
-                <span>🌿</span> Create Branch on GitHub
-              </button>
-              <div id="swe-branch-output" class="text-[11px] font-mono text-slate-400 truncate"></div>
-            </div>
-
-            <!-- Create Pull Request Section -->
-            <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-800 space-y-2">
-              <span class="text-xs font-semibold text-cyan-300 block">2. Open Pull Request with Test Verification</span>
-              <input type="text" id="swe-pr-title" placeholder="PR Title (e.g. fix: patch CORS wildcard and add test)" value="fix(swe): patch file non-destructively and add terminal runner" class="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-white font-mono">
-              <textarea id="swe-pr-body" rows="3" placeholder="Summary of changes and test logs..." class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white font-mono">Automated patch applied via search-and-replace block. Local test build verified in fullstack terminal sandbox.</textarea>
-              <button onclick="createGitPR()" id="btn-create-pr" class="w-full py-1.5 bg-cyan-700 hover:bg-cyan-600 text-white text-xs font-semibold rounded transition flex items-center justify-center gap-1">
-                <span>🚀</span> Open GitHub Pull Request
-              </button>
-              <div id="swe-pr-output" class="text-[11px] font-mono text-cyan-400 whitespace-pre-wrap"></div>
-            </div>
+            <input id="lab-crypto-in" type="text" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs font-mono text-slate-200" placeholder="SEFYM3szNXBvbl8yOH0=" />
+            <button onclick="runLabCrypto()" class="w-full py-2 bg-cyan-950 hover:bg-cyan-900 border border-cyan-800 text-cyan-300 text-xs font-bold rounded-lg transition">
+              Decode Multi-Recipe
+            </button>
+            <div id="lab-crypto-out" class="text-[11px] font-mono text-slate-400 truncate">Result ready...</div>
           </div>
 
-          <!-- DNA Knowledge Graph Architecture Memory -->
-          <div class="glass-card rounded-2xl p-5 border border-emerald-900/40 space-y-4">
+          <!-- 3. Direct MCP GitHub Tool -->
+          <div class="p-4 bg-slate-900/90 rounded-xl border border-slate-800 space-y-3">
             <div class="flex items-center justify-between">
-              <div>
-                <h2 class="text-base font-bold text-white flex items-center gap-2">
-                  <span>🧬</span> DNA Architecture Memory
-                </h2>
-                <p class="text-xs text-slate-400">Stores codebase relationships and dependency graph in DNA Knowledge Graph.</p>
-              </div>
-              <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-950 text-emerald-400 border border-emerald-800">HF DNA Graph</span>
+              <span class="text-xs font-bold text-purple-400">Direct MCP Tool Dispatcher</span>
+              <span class="text-[10px] font-mono text-slate-500">Direct Gateway</span>
             </div>
+            <button onclick="testDirectMcpConnection()" class="w-full py-2 bg-purple-950 hover:bg-purple-900 border border-purple-800 text-purple-300 text-xs font-bold rounded-lg transition">
+              Verify Direct MCP Handshake
+            </button>
+            <div id="mcp-test-out" class="text-[11px] font-mono text-slate-400 truncate">Click to test connection...</div>
+          </div>
 
-            <div class="space-y-2">
-              <div class="grid grid-cols-3 gap-1.5">
-                <input type="text" id="swe-mem-a" placeholder="server.py" value="server.py" class="bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-xs text-white font-mono">
-                <input type="text" id="swe-mem-rel" placeholder="depends_on" value="depends_on" class="bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-xs text-white font-mono">
-                <input type="text" id="swe-mem-b" placeholder="RenderMCP" value="RenderMCPGateway" class="bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-xs text-white font-mono">
-              </div>
-              <button onclick="syncCodebaseMemory()" id="btn-sync-mem" class="w-full py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-semibold rounded transition">
-                🧬 Sync Architecture Node
-              </button>
+          <!-- 4. Playwright Headless Probe -->
+          <div class="p-4 bg-slate-900/90 rounded-xl border border-slate-800 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-cyan-400">Playwright UI Probe</span>
+              <span class="text-[10px] font-mono text-slate-500">Tool #28</span>
             </div>
+            <input id="lab-playwright-url" type="text" value="http://127.0.0.1:8099/" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs font-mono text-slate-200" />
+            <button onclick="runLabPlaywright()" class="w-full py-2 bg-cyan-950 hover:bg-cyan-900 border border-cyan-800 text-cyan-300 text-xs font-bold rounded-lg transition">
+              Inspect DOM & Screenshot
+            </button>
+            <div id="lab-playwright-out" class="text-[11px] font-mono text-slate-400 truncate">Result ready...</div>
+          </div>
 
-            <div class="pt-2 border-t border-slate-800 space-y-2">
-              <div class="flex gap-2">
-                <input type="text" id="swe-mem-query" placeholder="Query architecture (e.g. server.py, CORS, Vercel)" value="server.py" class="flex-1 bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-white font-mono">
-                <button onclick="queryCodebaseMemory()" id="btn-query-mem" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold rounded transition">
-                  🔍 Search
-                </button>
-              </div>
-              <div id="swe-mem-output" class="bg-black border border-slate-800 rounded-xl p-2.5 text-emerald-300 font-mono text-[11px] max-h-36 overflow-y-auto whitespace-pre-wrap">Memory query output will appear here.</div>
+          <!-- 5. Advanced Crypto (Wiener) -->
+          <div class="p-4 bg-slate-900/90 rounded-xl border border-slate-800 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-cyan-400">RSA Wiener Attack</span>
+              <span class="text-[10px] font-mono text-slate-500">Tool #24</span>
             </div>
+            <input id="lab-wiener-n" type="text" value="17993" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs font-mono text-slate-200" placeholder="N" />
+            <input id="lab-wiener-e" type="text" value="905" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs font-mono text-slate-200" placeholder="e" />
+            <button onclick="runLabWiener()" class="w-full py-2 bg-cyan-950 hover:bg-cyan-900 border border-cyan-800 text-cyan-300 text-xs font-bold rounded-lg transition">
+              Derive Private d
+            </button>
+            <div id="lab-wiener-out" class="text-[11px] font-mono text-slate-400 truncate">Result ready...</div>
+          </div>
+
+          <!-- 6. DNA Memory Sync -->
+          <div class="p-4 bg-slate-900/90 rounded-xl border border-slate-800 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-emerald-400">DNA Knowledge Graph</span>
+              <span class="text-[10px] font-mono text-slate-500">Tool #02</span>
+            </div>
+            <input id="lab-dna-q" type="text" value="ApexGauntlet" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs font-mono text-slate-200" />
+            <button onclick="runLabDNA()" class="w-full py-2 bg-emerald-950 hover:bg-emerald-900 border border-emerald-800 text-emerald-300 text-xs font-bold rounded-lg transition">
+              Query Causal Graph
+            </button>
+            <div id="lab-dna-out" class="text-[11px] font-mono text-slate-400 truncate">Result ready...</div>
           </div>
 
         </div>
-
       </div>
+
     </div>
 
-    <!-- ========================================== -->
-    <!-- TAB 9: REPORTS & DOCUMENT DOWNLOADS        -->
-    <!-- ========================================== -->
+    <!-- ================================================================= -->
+    <!-- TAB 3: REPORTS & BENCHMARKS VAULT (36 DOCUMENTS)                  -->
+    <!-- ================================================================= -->
     <div id="tab-reports" class="tab-content hidden space-y-6">
-      <div class="glass-card rounded-2xl p-6 border border-cyan-900/40">
-        <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-800">
+      <div class="glass-card rounded-2xl p-6 border border-slate-800">
+        <div class="flex items-center justify-between mb-4">
           <div>
-            <h2 class="text-base font-bold text-white flex items-center gap-2">
-              <span>📑</span> Audit Reports, Methodology & Vulnerability Documents
+            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+              <span>📑</span> Research Papers, Benchmarks & Vulnerability Reports
             </h2>
-            <p class="text-xs text-slate-400 mt-0.5">Instant preview and 1-click download of all generated CTF benchmark proofs and architectural specifications.</p>
+            <p class="text-xs text-slate-400 mt-0.5">Empirical ledgers, 28-tool performance benchmarks, and academic whitepapers available for direct inspection and download.</p>
           </div>
-          <button onclick="fetchReportsList()" class="px-3 py-1.5 bg-slate-900 hover:bg-cyan-950 border border-slate-700 hover:border-cyan-700 text-xs font-semibold text-cyan-300 rounded-lg transition flex items-center gap-1.5">
-            <span>🔄</span> Refresh Reports
+          <button onclick="fetchReportsList()" class="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs text-cyan-400 rounded-lg transition font-mono flex items-center gap-1.5">
+            <span>🔄</span> Refresh Catalog
           </button>
         </div>
 
         <div id="reports-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div class="text-xs text-slate-500 animate-pulse p-4 text-center col-span-full">Loading available documents...</div>
+          <div class="text-xs text-cyan-400 animate-pulse p-8 text-center col-span-full">Loading documents...</div>
         </div>
       </div>
     </div>
 
   </main>
 
-  <!-- JAVASCRIPT LOGIC -->
+  <!-- JAVASCRIPT ORCHESTRATOR & MCP PROTOCOL HANDLER -->
   <script>
-    const SERVICE_URLS = {
-      hf: "https://outstandingom-vector.hf.space",
-      mcp: "https://mcp-server-2sl7.onrender.com",
-      kg: "https://outstandingom-knowledge-graph-env.hf.space"
-    };
+    let currentSessionId = 'sess_' + Math.random().toString(36).substring(2, 9);
+    let lastExtractedFlag = '';
 
-    // Tab Switching
     function switchTab(tabId) {
       document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-      document.querySelectorAll('.tab-btn').forEach(el => {
-        el.className = 'tab-btn px-4 py-2 rounded-lg font-medium text-slate-400 hover:text-white hover:bg-slate-900 transition flex items-center gap-2 border border-transparent whitespace-nowrap';
+      document.querySelectorAll('.tab-btn').forEach(b => {
+        b.classList.remove('bg-gradient-to-r', 'from-cyan-950', 'to-blue-950', 'text-cyan-300', 'border-cyan-700');
+        b.classList.add('text-slate-400', 'border-transparent');
       });
 
       const activeTab = document.getElementById(tabId);
       if (activeTab) activeTab.classList.remove('hidden');
 
-      const activeNav = document.getElementById(tabId.replace('tab-', 'nav-'));
-      if (activeNav) {
-        activeNav.className = 'tab-btn px-4 py-2 rounded-lg font-medium transition flex items-center gap-2 bg-cyan-950 text-cyan-400 border border-cyan-800 whitespace-nowrap';
+      const btnId = tabId.replace('tab-', 'nav-');
+      const activeBtn = document.getElementById(btnId);
+      if (activeBtn) {
+        activeBtn.classList.remove('text-slate-400', 'border-transparent');
+        activeBtn.classList.add('bg-gradient-to-r', 'from-cyan-950', 'to-blue-950', 'text-cyan-300', 'border-cyan-700');
       }
 
       if (tabId === 'tab-reports') {
@@ -990,249 +490,83 @@ flag[1] + 10 == 75
       }
     }
 
-    // Presets
-    const presets = {
-      prng: "I have a cryptography challenge where random.seed(int(time.time())) is used to generate the XOR key for a message. Query our past writeups for how to break this and generate a complete Python solver script.",
-      steg: "We received a text file with invisible whitespace characters. Search past CTF writeups on Unicode zero-width steganography, explain how to extract it, and write a Python script that decodes the zero-width bits into the flag.",
-      web: "There is a web challenge with a client-side timer checking completion state. Search our knowledge base for client-side timer bypass techniques and explain how to extract the flag.",
-      rsa: "We have an RSA challenge with modulus N, ciphertext C, and small public exponent e=3 without padding. Retrieve the pattern from the knowledge base and write a Python script to take the cube root."
-    };
-
-    function applyPreset(name) {
-      document.getElementById('challenge-prompt').value = presets[name] || '';
+    function startNewSession() {
+      currentSessionId = 'sess_' + Math.random().toString(36).substring(2, 9);
+      document.getElementById('session-badge').textContent = currentSessionId;
+      document.getElementById('trace-container').innerHTML = '<div class="text-xs text-slate-500 p-8 text-center font-mono">Fresh session initialized.</div>';
+      document.getElementById('flag-victory-card').classList.add('hidden');
+      document.getElementById('exploit-code-editor').value = '';
+      resetFsmSteps();
     }
 
-    function startAutonomousLinkAudit() {
-      const urlInput = document.getElementById('target-link-input');
-      const url = urlInput ? urlInput.value.trim() : '';
-      if (!url) {
-        alert('Please enter a target URL (e.g. http://127.0.0.1:8099 or https://your-ctf-host.com)');
-        if (urlInput) urlInput.focus();
-        return;
-      }
-
-      const promptBox = document.getElementById('challenge-prompt');
-      promptBox.value = `Target URL: ${url}\n\nTask: Perform end-to-end autonomous reconnaissance, architecture analysis, and vulnerability discovery on this target.\n1. Probe web endpoints and inspect responses for status code anomalies, reflection vulnerabilities, or error leaks.\n2. Run differential fuzzing or red-team prompts (via jailbreak_probe) if an AI/API endpoint is detected.\n3. Formulate the exact root-cause vulnerability, extract flags or security findings, and generate a verified reproduction proof.`;
-      
-      // Auto-trigger solve
-      executeSolve();
-    }
-
-    function updatePillsFromData(services) {
-      // HF Vector
-      const hf = services.hf_vector_space || {};
-      const hfEl = document.getElementById('stat-hf');
-      if (hf.status === 'online') {
-        hfEl.textContent = `${hf.latency_ms || 240}ms (Online)`;
-        hfEl.className = 'text-emerald-400 font-mono';
-      } else {
-        hfEl.textContent = 'Offline';
-        hfEl.className = 'text-rose-400 font-mono';
-      }
-
-      // Render MCP
-      const mcp = services.mcp_server || {};
-      const mcpEl = document.getElementById('stat-mcp');
-      if (mcp.status === 'online') {
-        mcpEl.textContent = `${mcp.latency_ms || 380}ms (Online)`;
-        mcpEl.className = 'text-emerald-400 font-mono';
-      } else {
-        mcpEl.textContent = 'Offline';
-        mcpEl.className = 'text-rose-400 font-mono';
-      }
-
-      // DNA Graph
-      const kg = services.knowledge_graph || {};
-      const kgEl = document.getElementById('stat-kg');
-      if (kg.status === 'online') {
-        kgEl.textContent = `${kg.latency_ms || 410}ms (Online)`;
-        kgEl.className = 'text-emerald-400 font-mono';
-      } else {
-        kgEl.textContent = 'Offline';
-        kgEl.className = 'text-rose-400 font-mono';
-      }
-    }
-
-    // Direct browser probe if backend route is deferring
-    async function probeDirectly() {
-      // 1. HF Vector Space probe
-      try {
-        const t0 = performance.now();
-        const r = await fetch(SERVICE_URLS.hf + '/config', { mode: 'cors' });
-        const latency = Math.round(performance.now() - t0);
-        const hfEl = document.getElementById('stat-hf');
-        if (r.ok) {
-          hfEl.textContent = `${latency}ms (Online)`;
-          hfEl.className = 'text-emerald-400 font-mono';
+    function resetFsmSteps() {
+      for (let i = 1; i <= 5; i++) {
+        const el = document.getElementById(`step-phase-${i}`);
+        if (el) {
+          el.className = 'p-3 rounded-xl bg-slate-900 border border-slate-800 transition';
         }
-      } catch (e) {
-        document.getElementById('stat-hf').textContent = 'Live (Space)';
       }
+      document.getElementById('fsm-status-badge').textContent = 'Idle / Ready';
+    }
 
-      // 2. Render MCP probe
-      try {
-        const t0 = performance.now();
-        const r = await fetch(SERVICE_URLS.mcp + '/health', { mode: 'cors' });
-        const latency = Math.round(performance.now() - t0);
-        const mcpEl = document.getElementById('stat-mcp');
-        if (r.ok) {
-          mcpEl.textContent = `${latency}ms (Online)`;
-          mcpEl.className = 'text-emerald-400 font-mono';
-        }
-      } catch (e) {
-        document.getElementById('stat-mcp').textContent = 'Live (Render)';
-      }
-
-      // 3. DNA Knowledge Graph probe
-      try {
-        const t0 = performance.now();
-        const r = await fetch(SERVICE_URLS.kg + '/ping', { mode: 'cors' });
-        const latency = Math.round(performance.now() - t0);
-        const kgEl = document.getElementById('stat-kg');
-        if (r.ok) {
-          kgEl.textContent = `${latency}ms (Online)`;
-          kgEl.className = 'text-emerald-400 font-mono';
-        }
-      } catch (e) {
-        document.getElementById('stat-kg').textContent = 'Live (Space)';
+    function updateFsmStep(stepNum, status) {
+      const el = document.getElementById(`step-phase-${stepNum}`);
+      if (!el) return;
+      if (status === 'active') {
+        el.className = 'p-3 rounded-xl bg-cyan-950/80 border-2 border-cyan-400 animate-pulse text-cyan-300 shadow-md shadow-cyan-500/20';
+        document.getElementById('fsm-status-badge').textContent = `Phase ${stepNum} Running...`;
+      } else if (status === 'done') {
+        el.className = 'p-3 rounded-xl bg-emerald-950/80 border-2 border-emerald-500 text-emerald-300 shadow-md shadow-emerald-500/20';
       }
     }
 
-    // Health Probe
-    async function refreshStatus() {
-      let loaded = false;
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2000);
-        const res = await fetch('/api/status', { signal: controller.signal });
-        clearTimeout(timeoutId);
-        if (res.ok) {
-          const data = await res.json();
-          if (data && data.services) {
-            updatePillsFromData(data.services);
-            loaded = true;
-          }
-        }
-      } catch (err) {
-        // Expected on cold start or pure static hosting
-      }
-
-      if (!loaded) {
-        await probeDirectly();
+    function loadAutopilotPreset(preset) {
+      const promptInput = document.getElementById('challenge-prompt');
+      if (preset === 'apex') {
+        promptInput.value = 'http://127.0.0.1:8099/ Inspect DOM, bypass security filters, retrieve passcode, and solve challenge.';
+      } else if (preset === 'quantum') {
+        promptInput.value = 'http://127.0.0.1:8088/ Test quantum vault endpoints and extract the defense flag.';
+      } else if (preset === 'z3') {
+        promptInput.value = 'Solve crackme constraints: flag[0] ^ 0x5A == 105 and flag[1] + 42 == 100. Target variable: flag.';
+      } else if (preset === 'wiener') {
+        promptInput.value = 'Perform RSA Wiener small private exponent attack with N=17993 and e=905.';
       }
     }
 
-    let lastRawSolution = "";
-    let currentSessionId = "sess_" + Math.random().toString(36).substring(2, 10);
-    let conversationHistory = [];
-
-    function updateSessionBadge() {
-      const badge = document.getElementById('session-badge');
-      if (badge) badge.textContent = `Sess: ${currentSessionId.substring(0, 10)}`;
-    }
-
-    async function startNewSession() {
-      try {
-        const res = await fetch('/api/session/reset', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ session_id: currentSessionId })
-        });
-        const data = await res.json();
-        currentSessionId = data.session_id || ("sess_" + Math.random().toString(36).substring(2, 10));
-      } catch(e) {
-        currentSessionId = "sess_" + Math.random().toString(36).substring(2, 10);
-      }
-      conversationHistory = [];
-      updateSessionBadge();
-      document.getElementById('solution-output').innerHTML = '<p class="text-slate-500 text-xs italic">Fresh session started. Submit a challenge or preset to begin.</p>';
-      document.getElementById('trace-container').innerHTML = '<div class="text-xs text-slate-500 italic p-3 text-center border border-dashed border-slate-800 rounded-xl">Ready for task. When triggered, real-time tool calls will stream here.</div>';
-      document.getElementById('trace-count').textContent = '0 tool calls';
-      alert('Started fresh challenge session: ' + currentSessionId.substring(0, 8));
-    }
-
-    // File Upload Handler
-    async function handleFileUpload(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-      const statusEl = document.getElementById('upload-status');
-      statusEl.textContent = `Uploading ${file.name}...`;
-      statusEl.className = 'text-[11px] text-cyan-400 font-mono animate-pulse';
-
-      const formData = new FormData();
-      formData.append('file', file);
-      try {
-        const res = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData
-        });
-        const data = await res.json();
-        if (data.file_path) {
-          statusEl.textContent = `✓ Attached: ${file.name}`;
-          statusEl.className = 'text-[11px] text-emerald-400 font-mono';
-          const promptEl = document.getElementById('challenge-prompt');
-          promptEl.value += `\n[Target File: ${data.file_path}]\nExtract magic bytes, analyze strings, and solve for the flag.`;
-        }
-      } catch (e) {
-        statusEl.textContent = `Upload error: ${e.message}`;
-        statusEl.className = 'text-[11px] text-rose-400 font-mono';
-      }
-    }
-
-    function renderTraceItem(item) {
-      return `
-        <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-3 text-xs space-y-1.5 animate-fadeIn">
-          <div class="flex items-center justify-between">
-            <span class="font-bold text-cyan-400 flex items-center gap-1.5">
-              <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
-              Turn ${item.turn || '•'}: ${item.tool}
-            </span>
-            <span class="text-[10px] text-emerald-400 font-mono">Executed</span>
-          </div>
-          <div class="text-[11px] font-mono text-slate-400 bg-slate-950 p-2 rounded-lg truncate">
-            Args: ${JSON.stringify(item.args)}
-          </div>
-          <details class="text-[11px]">
-            <summary class="cursor-pointer text-slate-400 hover:text-cyan-400 select-none">View Tool Output</summary>
-            <pre class="bg-slate-950 p-2.5 rounded-lg text-emerald-400 font-mono mt-1 overflow-x-auto whitespace-pre-wrap max-h-36">${item.output}</pre>
-          </details>
-        </div>
-      `;
-    }
-
-    // Solve Challenge with Real-Time Streaming & Fallback
     async function executeSolve() {
       const prompt = document.getElementById('challenge-prompt').value.trim();
       if (!prompt) {
-        alert('Please enter a challenge prompt or select a preset.');
+        alert('Please enter a target URL or challenge description.');
         return;
       }
 
-      const provider = document.getElementById('provider-select').value;
       const btn = document.getElementById('solve-btn');
       const spinner = document.getElementById('solve-spinner');
       const traceContainer = document.getElementById('trace-container');
-      const solutionOutput = document.getElementById('solution-output');
-      const traceCount = document.getElementById('trace-count');
+      const flagCard = document.getElementById('flag-victory-card');
+      const flagText = document.getElementById('flag-display-text');
+      const exploitEditor = document.getElementById('exploit-code-editor');
 
       btn.disabled = true;
       spinner.classList.remove('hidden');
-      traceContainer.innerHTML = '<div class="text-xs text-cyan-400 animate-pulse p-3 text-center">🤖 Agent initialized: streaming tool execution turns...</div>';
-      solutionOutput.innerHTML = '<p class="text-xs text-slate-500 animate-pulse">Running autonomous reasoning and exploit verification...</p>';
+      resetFsmSteps();
+      updateFsmStep(1, 'active');
 
+      traceContainer.innerHTML = '<div class="text-xs text-cyan-400 animate-pulse p-4 text-center font-mono">🤖 Autopilot dispatched. Initiating Phase 1 (Reconnaissance)...</div>';
+      flagCard.classList.add('hidden');
+
+      const startTime = performance.now();
       let liveTraces = [];
 
-      updateSessionBadge();
-      // Record user turn in conversational feed
-      conversationHistory.push({ role: 'user', text: prompt });
-      document.getElementById('challenge-prompt').value = '';
-
       try {
-        // Attempt SSE Streaming first for instant real-time feedback and Vercel timeout immunity
         const response = await fetch('/api/solve/stream', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt, provider, session_id: currentSessionId })
+          body: JSON.stringify({
+            prompt: prompt,
+            provider: document.getElementById('provider-select').value,
+            session_id: currentSessionId
+          })
         });
 
         if (response.ok && response.body) {
@@ -1246,7 +580,7 @@ flag[1] + 10 == 75
 
             buffer += decoder.decode(value, { stream: true });
             const lines = buffer.split('\n');
-            buffer = lines.pop(); // keep last incomplete line
+            buffer = lines.pop();
 
             for (const line of lines) {
               if (line.startsWith('data: ')) {
@@ -1256,732 +590,208 @@ flag[1] + 10 == 75
                   const ev = JSON.parse(dataStr);
                   if (ev.type === 'tool_call' && ev.item) {
                     liveTraces.push(ev.item);
-                    traceCount.textContent = `${liveTraces.length} tool calls`;
-                    traceContainer.innerHTML = liveTraces.map(renderTraceItem).join('');
+                    document.getElementById('trace-count').textContent = `${liveTraces.length} tool calls`;
+                    renderTraceList(liveTraces);
+
+                    // Dynamic FSM stepper updates based on tool names
+                    const tName = ev.item.tool || '';
+                    if (tName.includes('playwright') || tName.includes('probe') || tName.includes('fuzzer')) {
+                      updateFsmStep(1, 'done');
+                      updateFsmStep(2, 'active');
+                    } else if (tName.includes('knowledge') || tName.includes('symbolic') || tName.includes('crypto')) {
+                      updateFsmStep(2, 'done');
+                      updateFsmStep(3, 'active');
+                    } else if (tName.includes('sandbox') || tName.includes('terminal')) {
+                      updateFsmStep(3, 'done');
+                      updateFsmStep(4, 'active');
+                    }
                   } else if (ev.type === 'final_answer') {
-                    lastRawSolution = ev.final_answer;
-                    conversationHistory.push({ role: 'assistant', text: lastRawSolution });
-                    renderConversationStream();
+                    const elapsed = ((performance.now() - startTime) / 1000).toFixed(2);
+                    document.getElementById('solve-time-badge').textContent = `⏱️ ${elapsed}s`;
+
+                    // Extract Flag
+                    const ans = ev.final_answer || '';
+                    const match = ans.match(/(?:flag|CTF|HQX|hackquest)\{[^}]+\}/i);
+                    if (match) {
+                      lastExtractedFlag = match[0];
+                      flagText.textContent = lastExtractedFlag;
+                      flagCard.classList.remove('hidden');
+                      updateFsmStep(4, 'done');
+                      updateFsmStep(5, 'done');
+                      document.getElementById('fsm-status-badge').textContent = '🏆 Flag Captured!';
+                    } else {
+                      updateFsmStep(4, 'done');
+                      document.getElementById('fsm-status-badge').textContent = 'Completed';
+                    }
+
+                    // Extract python code block
+                    const codeMatch = ans.match(/```python([\s\S]*?)```/);
+                    if (codeMatch) {
+                      exploitEditor.value = codeMatch[1].trim();
+                    } else {
+                      exploitEditor.value = ans;
+                    }
+
+                    // Refresh screenshot proof image with cache buster
+                    const proofImg = document.getElementById('browser-proof-img');
+                    if (proofImg) {
+                      proofImg.src = `/docs-files/images/playwright_proof.png?t=${Date.now()}`;
+                    }
                   }
-                } catch(e) {}
+                } catch (e) {}
               }
             }
           }
-          if (lastRawSolution) return;
         }
-
-        // Fallback to standard POST /api/solve
-        const res = await fetch('/api/solve', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt, provider, session_id: currentSessionId })
-        });
-        const data = await res.json();
-        const trace = data.trace || [];
-        traceCount.textContent = `${trace.length} tool calls`;
-        traceContainer.innerHTML = trace.length ? trace.map(renderTraceItem).join('') : '<div class="text-xs text-slate-400 p-2">Direct reasoning (no external tool calls needed).</div>';
-
-        lastRawSolution = data.final_answer || 'No output produced.';
-        solutionOutput.innerHTML = marked.parse(lastRawSolution);
-        Prism.highlightAllUnder(solutionOutput);
-
       } catch (err) {
-        solutionOutput.innerHTML = `<p class="text-rose-400 font-mono text-xs">Error: ${err.message}</p>`;
+        traceContainer.innerHTML = `<div class="text-xs text-rose-400 p-4 font-mono">Error during solve: ${err.message}</div>`;
       } finally {
         btn.disabled = false;
         spinner.classList.add('hidden');
       }
     }
 
-    // Copy Solution
-    
-    function renderConversationStream() {
-      const solutionOutput = document.getElementById('solution-output');
-      if (conversationHistory.length === 0) return;
-      solutionOutput.innerHTML = conversationHistory.map((msg, idx) => {
-        if (msg.role === 'user') {
-          return `
-            <div class="mb-4 p-3 rounded-xl bg-slate-900 border border-cyan-900/50">
-              <span class="text-[11px] font-bold text-cyan-400 block mb-1">User Prompt (Turn ${Math.floor(idx/2)+1}):</span>
-              <p class="text-xs text-slate-200 whitespace-pre-wrap font-mono">${msg.text}</p>
-            </div>
-          `;
-        } else {
-          return `
-            <div class="mb-6 p-4 rounded-xl bg-slate-950 border border-slate-800">
-              <div class="flex items-center justify-between mb-2 pb-1 border-b border-slate-900">
-                <span class="text-[11px] font-bold text-emerald-400 flex items-center gap-1.5">
-                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                  Agent Solution & Verified Exploit
-                </span>
-                <span class="text-[10px] text-slate-500 font-mono">Completed</span>
-              </div>
-              <div class="text-sm text-slate-200 prose prose-invert max-w-none">
-                ${marked.parse(msg.text)}
-              </div>
-            </div>
-          `;
-        }
-      }).join('');
-      Prism.highlightAllUnder(solutionOutput);
-      solutionOutput.scrollTop = solutionOutput.scrollHeight;
-      syncCodeToEditor(lastRawSolution);
-    }
-
-    function copyOutput() {
-      const textToCopy = lastRawSolution || document.getElementById('solution-output').innerText;
-      navigator.clipboard.writeText(textToCopy).then(() => {
-        alert('Solution copied to clipboard!');
-      });
-    }
-
-    function syncCodeToEditor(solutionText) {
-      if (!solutionText) return;
-      const editor = document.getElementById('exploit-code-editor');
-      if (!editor) return;
-      const codeMatch = solutionText.match(/```(?:python|py)?\s*([\s\S]*?)\s*```/i);
-      if (codeMatch && codeMatch[1] && codeMatch[1].trim()) {
-        editor.value = codeMatch[1].trim();
-      } else if (solutionText.includes("import ") || solutionText.includes("def ")) {
-        editor.value = solutionText.trim();
-      }
-    }
-
-    async function runEditorInSandbox() {
-      const code = document.getElementById('exploit-code-editor').value.trim();
-      const consoleContainer = document.getElementById('sandbox-console-container');
-      const consoleOutput = document.getElementById('sandbox-console-output');
-      const consoleTime = document.getElementById('sandbox-console-time');
-      const flagBanner = document.getElementById('sandbox-flag-banner');
-      const flagVal = document.getElementById('sandbox-flag-val');
-      const btn = document.getElementById('btn-run-editor');
-
-      if (!code) {
-        alert('Exploit editor is empty. Enter or generate a Python script first.');
-        return;
-      }
-
-      consoleContainer.classList.remove('hidden');
-      flagBanner.classList.add('hidden');
-      consoleOutput.textContent = '🚀 Executing Python script in sandbox with timeout 10s...';
-      consoleTime.textContent = 'Running...';
-      btn.disabled = true;
-
-      try {
-        const res = await fetch('/api/sandbox/run', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code: code, timeout_seconds: 10 })
-        });
-        const data = await res.json();
-        consoleTime.textContent = `${data.elapsed_seconds || 0}s (Exit: ${data.returncode ?? 0})`;
-
-        let out = '';
-        if (data.stdout) out += `[STDOUT]:\n${data.stdout}\n`;
-        if (data.stderr) out += `[STDERR]:\n${data.stderr}\n`;
-        if (data.diagnosis) out += `\n[DIAGNOSIS]: ${data.diagnosis}\n`;
-        if (data.error) out += `[ERROR]: ${data.error}\n`;
-        consoleOutput.textContent = out || 'Execution finished with no output.';
-
-        if (data.flags_captured && data.flags_captured.length > 0) {
-          flagVal.textContent = data.flags_captured.join(', ');
-          flagBanner.classList.remove('hidden');
-        }
-      } catch (err) {
-        consoleOutput.textContent = `Sandbox request error: ${err.message}`;
-      } finally {
-        btn.disabled = false;
-      }
-    }
-
-    async function runEditorParallelWorkers() {
-      const baseCode = document.getElementById('exploit-code-editor').value.trim();
-      const consoleContainer = document.getElementById('sandbox-console-container');
-      const consoleOutput = document.getElementById('sandbox-console-output');
-      const consoleTime = document.getElementById('sandbox-console-time');
-      const flagBanner = document.getElementById('sandbox-flag-banner');
-      const flagVal = document.getElementById('sandbox-flag-val');
-      const btn = document.getElementById('btn-run-parallel');
-
-      if (!baseCode) {
-        alert('Exploit editor is empty. Enter or generate a Python script first.');
-        return;
-      }
-
-      consoleContainer.classList.remove('hidden');
-      flagBanner.classList.add('hidden');
-      consoleOutput.textContent = '⚡ Dispatching 4x concurrent exploit workers with varied parameters...';
-      consoleTime.textContent = '4 workers active...';
-      btn.disabled = true;
-
-      const candidateScripts = [
-        baseCode,
-        baseCode + "\n# Worker 2: aggressive timeout\n",
-        baseCode.replace(/verify=True/g, 'verify=False'),
-        baseCode + "\n# Worker 4: auto retry fallback\n"
-      ];
-
-      try {
-        const res = await fetch('/api/sandbox/parallel', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ scripts: candidateScripts, timeout_seconds: 12 })
-        });
-        const data = await res.json();
-        consoleTime.textContent = `${data.strategies_tested || 4} workers completed`;
-
-        let out = `⚡ PARALLEL WORKERS SUMMARY (${data.strategies_tested} variations):\n\n`;
-        if (data.all_results) {
-          data.all_results.forEach(r => {
-            out += `[Worker #${r.strategy_id}] ReturnCode: ${r.returncode} | Elapsed: ${r.elapsed_seconds || 0}s\n`;
-            if (r.flags_captured && r.flags_captured.length > 0) {
-              out += `  🎯 FLAGS FOUND: ${r.flags_captured.join(', ')}\n`;
-            }
-            if (r.stdout_snippet) out += `  Out: ${r.stdout_snippet.trim().substring(0, 150)}...\n`;
-            out += '\n';
-          });
-        }
-        consoleOutput.textContent = out;
-
-        if (data.winning_flags && data.winning_flags.length > 0) {
-          flagVal.textContent = data.winning_flags.join(', ');
-          flagBanner.classList.remove('hidden');
-        }
-      } catch (err) {
-        consoleOutput.textContent = `Parallel worker error: ${err.message}`;
-      } finally {
-        btn.disabled = false;
-      }
-    }
-
-    // Commit Solver to GitHub (Extracts clean Python script instead of raw HTML)
-    async function commitSolverToGitHub() {
-      const repo = document.getElementById('commit-repo').value.trim();
-      const path = document.getElementById('commit-path').value.trim();
-      const message = document.getElementById('commit-msg').value.trim();
-      const resEl = document.getElementById('commit-result');
-
-      if (!lastRawSolution) {
-        resEl.innerHTML = '<span class="text-rose-400">Cannot commit: No solution generated yet.</span>';
-        return;
-      }
-
-      // Extract clean Python code if present, otherwise commit raw markdown
-      let cleanCode = lastRawSolution;
-      const codeMatch = lastRawSolution.match(/```(?:python|py)?\s*([\s\S]*?)\s*```/i);
-      if (codeMatch && codeMatch[1] && codeMatch[1].trim()) {
-        cleanCode = codeMatch[1].trim();
-      }
-
-      resEl.innerHTML = '<span class="text-cyan-400 animate-pulse">Committing clean exploit script via Render MCP Gateway...</span>';
-
-      try {
-        const res = await fetch('/api/github/commit', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ repo, path, content: cleanCode, message })
-        });
-        const data = await res.json();
-        resEl.innerHTML = `<span class="text-emerald-400 font-mono">✓ Successfully committed clean script to ${repo}/${path}</span>`;
-      } catch (err) {
-        resEl.innerHTML = `<span class="text-rose-400">Error: ${err.message}</span>`;
-      }
-    }
-
-    // Search Vector RAG
-    async function executeRAGSearch() {
-      const query = document.getElementById('rag-search-input').value.trim();
-      const domain = document.getElementById('rag-domain-select').value;
-      const container = document.getElementById('rag-results-container');
-
-      if (!query) {
-        alert('Please enter a query.');
-        return;
-      }
-
-      container.innerHTML = '<div class="p-6 text-center text-xs text-cyan-400 animate-pulse">Querying Hugging Face ZeroGPU Vector Space...</div>';
-
-      try {
-        const res = await fetch('/api/rag/search', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query, domain })
-        });
-        const data = await res.json();
-        container.innerHTML = `
-          <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 text-sm prose prose-invert max-w-none">
-            ${marked.parse(data.results || 'No matching techniques found.')}
+    function renderTraceList(traces) {
+      const container = document.getElementById('trace-container');
+      container.innerHTML = traces.map((t, idx) => `
+        <div class="p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-xs font-mono space-y-1">
+          <div class="flex items-center justify-between text-cyan-400">
+            <span class="font-bold flex items-center gap-1.5">
+              <span>🔧</span> Tool #${idx+1}: ${t.tool}
+            </span>
+            <span class="text-[10px] text-slate-500">Turn ${t.turn || idx+1}</span>
           </div>
-        `;
-        Prism.highlightAllUnder(container);
-      } catch (err) {
-        // Fallback to direct Space query
-        try {
-          const directRes = await fetch(SERVICE_URLS.hf + '/gradio_api/call/query', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ data: [query, domain, 3] })
-          });
-          const callData = await directRes.json();
-          if (callData.event_id) {
-            const evRes = await fetch(SERVICE_URLS.hf + '/gradio_api/call/query/' + callData.event_id);
-            const text = await evRes.text();
-            for (const line of text.split('\n')) {
-              if (line.startsWith('data:')) {
-                const parsed = JSON.parse(line.substring(5).trim());
-                container.innerHTML = `<div class="bg-slate-950 border border-slate-800 rounded-xl p-5 text-sm prose prose-invert max-w-none">${marked.parse(parsed[0])}</div>`;
-                Prism.highlightAllUnder(container);
-                return;
-              }
-            }
-          }
-        } catch (e2) {
-          container.innerHTML = `<div class="p-4 text-xs text-rose-400 font-mono">RAG search failed: ${err.message}</div>`;
-        }
-      }
-    }
-
-    // Forensics Scan
-    async function executeForensicScan() {
-      const filePath = document.getElementById('forensics-file-path').value.trim();
-      const text = document.getElementById('forensics-text-input').value.trim();
-      const out = document.getElementById('forensics-output');
-
-      out.textContent = 'Running ForensicEngine extractors & flag regex analysis...';
-
-      try {
-        const res = await fetch('/api/forensics/scan', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ file_path: filePath, text })
-        });
-        const data = await res.json();
-        out.textContent = JSON.stringify(data, null, 2);
-      } catch (err) {
-        out.textContent = `Error: ${err.message}`;
-      }
-    }
-
-    // Fetch GitHub Repos
-    async function fetchGitHubRepos() {
-      const container = document.getElementById('github-repos-container');
-      container.innerHTML = '<div class="col-span-full text-center text-xs text-cyan-400 animate-pulse py-8">Fetching repositories from Render MCP Gateway...</div>';
-
-      try {
-        let data = null;
-        try {
-          const res = await fetch('/api/github/repos');
-          if (res.ok) {
-            const ct = res.headers.get('content-type') || '';
-            if (ct.includes('application/json')) {
-              data = await res.json();
-            }
-          }
-        } catch (e) {}
-
-        if (!data || !data.content) {
-          const res = await fetch('https://mcp-server-2sl7.onrender.com/api/test-tool', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer outstandingom_mcp_2026hjfbechjbdhjjfbnkqjkj'
-            },
-            body: JSON.stringify({ tool: 'list_repositories', params: {} })
-          });
-          if (res.ok) {
-            data = await res.json();
-          }
-        }
-
-        let repos = [];
-        if (data) {
-          if (Array.isArray(data)) {
-            repos = data;
-          } else if (data.content && Array.isArray(data.content)) {
-            try {
-              repos = JSON.parse(data.content[0].text);
-            } catch(e) {
-              repos = [];
-            }
-          }
-        }
-
-        if (repos.length === 0) {
-          container.innerHTML = '<div class="col-span-full text-center text-xs text-slate-400 py-8">No repositories returned.</div>';
-          return;
-        }
-
-        container.innerHTML = repos.map(r => `
-          <div class="bg-slate-950 border border-slate-800 hover:border-cyan-800/80 rounded-xl p-4 transition space-y-2">
-            <div class="flex items-center justify-between">
-              <span class="font-bold text-sm text-white truncate">${r.name}</span>
-              <span class="text-[10px] px-2 py-0.5 rounded-full ${r.private ? 'bg-amber-950 text-amber-400' : 'bg-emerald-950 text-emerald-400'}">${r.private ? 'Private' : 'Public'}</span>
-            </div>
-            <p class="text-xs text-slate-400 truncate">${r.description || 'No description'}</p>
-            <div class="flex items-center justify-between text-[11px] text-slate-500 pt-2 border-t border-slate-900 font-mono">
-              <span>⭐ ${r.stargazers_count || 0}</span>
-              <a href="${r.html_url}" target="_blank" class="text-cyan-400 hover:underline">View on GitHub ↗</a>
-            </div>
+          <div class="text-[11px] text-slate-400 bg-black/60 p-2 rounded truncate">
+            ${JSON.stringify(t.args || {})}
           </div>
-        `).join('');
+          <div class="text-[11px] text-emerald-400 bg-black/60 p-2 rounded max-h-24 overflow-y-auto">
+            ${(typeof t.output === 'string' ? t.output : JSON.stringify(t.output)) || 'Output received'}
+          </div>
+        </div>
+      `).reverse().join('');
+    }
 
-      } catch (err) {
-        container.innerHTML = `<div class="col-span-full text-center text-xs text-rose-400 py-8">Error: ${err.message}</div>`;
+    function copyExtractedFlag() {
+      if (lastExtractedFlag) {
+        navigator.clipboard.writeText(lastExtractedFlag);
+        alert('Flag copied to clipboard: ' + lastExtractedFlag);
       }
     }
 
-    // ==========================================
-    // CTFD & NETCAT JAVASCRIPT HANDLERS
-    // ==========================================
-    let cachedCTFdChallenges = [];
-
-    async function fetchCTFdChallenges() {
-      const url = document.getElementById('ctfd-url').value.trim();
-      const token = document.getElementById('ctfd-token').value.trim();
-      const statusEl = document.getElementById('ctfd-status');
-      const countEl = document.getElementById('ctfd-count');
-      const container = document.getElementById('ctfd-challenges-list');
-
-      if (!url) {
-        statusEl.textContent = 'Enter a valid URL';
-        return;
+    function copyExploitCode() {
+      const code = document.getElementById('exploit-code-editor').value;
+      if (code) {
+        navigator.clipboard.writeText(code);
+        alert('Exploit code copied to clipboard!');
       }
+    }
 
-      statusEl.textContent = 'Fetching...';
-      container.innerHTML = '<div class="text-center text-xs text-slate-400 py-8">Connecting to CTFd API...</div>';
-
+    async function testDirectMcpConnection() {
+      const out = document.getElementById('mcp-test-out');
+      if (out) out.textContent = 'Testing direct MCP handshake...';
       try {
-        const res = await fetch('/api/ctfd', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'list_challenges', ctfd_url: url, token: token })
-        });
-        
-        const ct = res.headers.get('content-type') || '';
-        if (!ct.includes('application/json')) {
-          statusEl.textContent = 'Backend Offline';
-          container.innerHTML = `
-            <div class="text-center text-xs text-amber-400 py-6 space-y-2">
-              <div class="font-bold">⚠️ Local Agent Server Required</div>
-              <p class="text-slate-400 max-w-md mx-auto">Vercel hosts the dashboard frontend statically. CTFd Autopilot, interactive Netcat, and Python sandboxes execute via your local server.</p>
-              <div class="pt-1">
-                <a href="http://localhost:8080" target="_blank" class="px-3 py-1.5 bg-cyan-950 text-cyan-300 border border-cyan-800 rounded-lg font-mono hover:bg-cyan-900 transition inline-block">
-                  Launch http://localhost:8080 ↗
-                </a>
-              </div>
-            </div>`;
-          return;
-        }
-
+        const res = await fetch('/api/mcp/test-direct', { method: 'POST' });
         const data = await res.json();
-
-        if (data.status === 'success' && data.challenges) {
-          cachedCTFdChallenges = data.challenges;
-          countEl.textContent = `${data.challenges.length} loaded`;
-          statusEl.textContent = 'Success';
-
-          if (data.challenges.length === 0) {
-            container.innerHTML = '<div class="text-center text-xs text-slate-400 py-8">No challenges active on this platform.</div>';
-            return;
-          }
-
-          container.innerHTML = data.challenges.map(c => `
-            <div class="bg-slate-950 border border-slate-800 hover:border-cyan-800/80 rounded-xl p-3.5 transition flex items-center justify-between gap-3">
-              <div class="space-y-1 truncate">
-                <div class="flex items-center gap-2">
-                  <span class="font-bold text-sm text-white truncate">${c.name}</span>
-                  <span class="text-[10px] px-2 py-0.5 rounded-full ${c.solved_by_me ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-slate-800 text-slate-300'} font-mono">${c.solved_by_me ? 'SOLVED' : `${c.value || 0} pts`}</span>
-                </div>
-                <div class="text-[11px] text-slate-400 font-mono">${c.category || 'General'} (ID: ${c.id})</div>
-              </div>
-              <div class="flex items-center gap-2 shrink-0">
-                <button onclick="solveCTFdChallenge(${c.id}, '${c.name.replace(/'/g, "\\'")}', '${(c.category || 'General').replace(/'/g, "\\'")}', ${c.value || 0})" class="px-2.5 py-1.5 bg-cyan-950 hover:bg-cyan-900 text-cyan-300 border border-cyan-800 text-xs rounded-lg transition font-medium flex items-center gap-1">
-                  <span>🤖</span> Solve
-                </button>
-                <button onclick="promptSubmitFlag(${c.id})" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs rounded-lg transition font-medium">
-                  Submit Flag
-                </button>
-              </div>
-            </div>
-          `).join('');
-        } else {
-          statusEl.textContent = 'Error';
-          const errMsg = data.message || data.error || data.response || 'Platform returned an error';
-          container.innerHTML = `<div class="text-center text-xs text-rose-400 py-8 space-y-1"><div>${errMsg}</div>${data.preview ? `<div class="text-[10px] text-slate-500 font-mono overflow-hidden max-h-16">${data.preview}</div>` : ''}</div>`;
-        }
-      } catch (err) {
-        statusEl.textContent = 'Failed';
-        container.innerHTML = `<div class="text-center text-xs text-rose-400 py-8">Request failed: ${err.message}. If running from Vercel, open <a href="http://localhost:8080" class="underline text-cyan-400">http://localhost:8080</a>.</div>`;
+        const msg = `✅ Verified! Discovered ${data.tools_discovered} tools over direct MCP protocol.`;
+        if (out) out.textContent = msg;
+        alert(msg);
+      } catch (e) {
+        if (out) out.textContent = 'MCP Error: ' + e.message;
+        alert('MCP Test Error: ' + e.message);
       }
     }
 
-    async function fetchCTFdScoreboard() {
-      const url = document.getElementById('ctfd-url').value.trim();
-      const token = document.getElementById('ctfd-token').value.trim();
-      const statusEl = document.getElementById('ctfd-status');
-      const container = document.getElementById('ctfd-challenges-list');
-
-      statusEl.textContent = 'Loading scoreboard...';
-      try {
-        const res = await fetch('/api/ctfd', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'get_scoreboard', ctfd_url: url, token: token })
-        });
-        const data = await res.json();
-        if (data.status === 'success' && data.top_10) {
-          statusEl.textContent = 'Scoreboard loaded';
-          container.innerHTML = `
-            <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800 space-y-2">
-              <h3 class="text-xs font-bold text-cyan-400 uppercase tracking-wider mb-2">Top Teams Standings</h3>
-              ${data.top_10.map((t, idx) => `
-                <div class="flex items-center justify-between text-xs py-1 border-b border-slate-800/60">
-                  <span class="font-bold text-white">#${t.pos || idx + 1} ${t.name || t.account_id}</span>
-                  <span class="font-mono text-emerald-400">${t.score || 0} pts</span>
-                </div>
-              `).join('')}
-            </div>
-          `;
-        }
-      } catch (err) {
-        statusEl.textContent = 'Error';
-      }
-    }
-
-    function solveCTFdChallenge(chalId, chalName, chalCat, chalVal) {
-      const url = document.getElementById('ctfd-url').value.trim();
-      const token = document.getElementById('ctfd-token').value.trim();
-      switchTab('tab-agent');
-      document.getElementById('challenge-prompt').value = 
-        `CTFd Challenge [${chalCat}]: "${chalName}" (${chalVal} pts, ID: ${chalId}).\n` +
-        `Fetch the full challenge details and attachments from CTFd platform (${url}), solve the challenge autonomously, and submit the captured flag directly to CTFd!`;
-      runAgentSolve();
-    }
-
-    async function promptSubmitFlag(chalId) {
-      const flag = prompt(`Enter Flag to submit for challenge ID ${chalId}:`, 'HQX{...}');
-      if (!flag) return;
-      const url = document.getElementById('ctfd-url').value.trim();
-      const token = document.getElementById('ctfd-token').value.trim();
-      try {
-        const res = await fetch('/api/ctfd', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'submit_flag', ctfd_url: url, token: token, challenge_id: chalId, flag: flag })
-        });
-        const data = await res.json();
-        alert(`CTFd Response:\nStatus: ${data.result || data.status || 'unknown'}\nMessage: ${data.message || JSON.stringify(data)}`);
-      } catch (err) {
-        alert(`Submission Error: ${err.message}`);
-      }
-    }
-
-    async function probeSocketTerminal() {
-      const host = document.getElementById('socket-host').value.trim();
-      const port = parseInt(document.getElementById('socket-port').value.trim(), 10);
-      const payload = document.getElementById('socket-payload').value;
-      const statusEl = document.getElementById('socket-status');
-      const outputEl = document.getElementById('socket-output');
-
-      if (!host || !port) {
-        statusEl.textContent = 'Enter host and port';
-        return;
-      }
-
-      statusEl.textContent = 'Connecting...';
-      outputEl.textContent = `Connecting to ${host}:${port}...\n`;
-
-      try {
-        const res = await fetch('/api/socket/probe', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ host: host, port: port, payload: payload, timeout_seconds: 5.0 })
-        });
-        const data = await res.json();
-        statusEl.textContent = data.status || 'Done';
-
-        let text = `[CONNECTED] ${data.host}:${data.port}\n`;
-        if (data.banner) {
-          text += `[BANNER]:\n${data.banner}\n`;
-        }
-        if (data.response) {
-          text += `[RESPONSE]:\n${data.response}\n`;
-        }
-        if (data.flags_found && data.flags_found.length > 0) {
-          text += `\n🎉 FLAGS CAPTURED:\n${data.flags_found.join('\n')}\n`;
-        }
-        if (data.error) {
-          text += `[ERROR]: ${data.error}\n`;
-        }
-        outputEl.textContent = text;
-      } catch (err) {
-        statusEl.textContent = 'Failed';
-        outputEl.textContent = `Socket Error: ${err.message}`;
-      }
-    }
-
-    async function executeDynamicFuzzing() {
-      const url = document.getElementById('fuzz-url').value.trim();
-      const cat = document.getElementById('fuzz-category').value;
-      const method = document.getElementById('fuzz-method').value;
-      const param = document.getElementById('fuzz-param').value.trim();
-      const statusEl = document.getElementById('fuzz-status');
-      const countEl = document.getElementById('fuzz-count');
-      const resultsEl = document.getElementById('fuzz-results');
-      const btn = document.getElementById('btn-run-fuzzer');
-
-      if (!url) {
-        alert('Please enter a target URL.');
-        return;
-      }
-
-      btn.disabled = true;
-      statusEl.textContent = 'Fuzzing with Vector RAG payloads...';
-      resultsEl.innerHTML = '<div class="text-xs text-cyan-400 animate-pulse p-4 text-center">Pulling payloads from ZeroGPU Vector Space & probing endpoint...</div>';
-
-      try {
-        const res = await fetch('/api/fuzz/scan', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ target_url: url, category: cat, method: method, param_name: param || null })
-        });
-        const data = await res.json();
-        btn.disabled = false;
-        statusEl.textContent = data.status || 'Done';
-
-        if (data.winning_flags && data.winning_flags.length > 0) {
-          alert('🎉 FLAG CAPTURED BY FUZZER: ' + data.winning_flags.join(', '));
-        }
-
-        const findings = data.findings || [];
-        countEl.textContent = `${findings.length} findings (${data.total_payloads_fuzzed || 0} tested)`;
-
-        if (findings.length === 0) {
-          resultsEl.innerHTML = `
-            <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800 text-xs text-slate-400">
-              <span class="text-emerald-400 font-semibold">✓ Scan Clean:</span> No anomalous responses or disclosures detected across ${data.total_payloads_fuzzed || 0} payloads.
-            </div>
-          `;
-        } else {
-          resultsEl.innerHTML = findings.map(f => `
-            <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 text-xs space-y-2">
-              <div class="flex items-center justify-between">
-                <span class="font-mono text-cyan-400 font-bold break-all">${f.payload}</span>
-                <span class="text-[10px] px-2 py-0.5 rounded font-mono ${f.flags && f.flags.length ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-amber-950 text-amber-400 border border-amber-800'}">HTTP ${f.status_code} (${f.duration_s}s)</span>
-              </div>
-              <div class="flex flex-wrap gap-1.5">
-                ${(f.anomalies || []).map(a => `<span class="px-2 py-0.5 bg-rose-950 text-rose-300 border border-rose-800 rounded text-[10px] font-mono">${a}</span>`).join('')}
-              </div>
-              <pre class="bg-slate-950 p-2 rounded text-[11px] text-slate-400 font-mono truncate">${f.snippet || ''}</pre>
-            </div>
-          `).join('');
-        }
-      } catch (err) {
-        btn.disabled = false;
-        statusEl.textContent = 'Error';
-        resultsEl.innerHTML = `<div class="text-xs text-rose-400 p-3">Error: ${err.message}</div>`;
-      }
-    }
-
-    async function executeSymbolicSolve() {
-      const constraints = document.getElementById('symbolic-constraints').value.trim();
-      const targetVar = document.getElementById('symbolic-target').value.trim();
-      const lengthVal = parseInt(document.getElementById('symbolic-length').value, 10);
-      const statusEl = document.getElementById('symbolic-status');
-      const outputEl = document.getElementById('symbolic-output');
-      const btn = document.getElementById('btn-run-symbolic');
-
-      if (!constraints) {
-        alert('Please enter constraints.');
-        return;
-      }
-
-      btn.disabled = true;
-      statusEl.textContent = 'Solving with Z3 SMT...';
-      outputEl.textContent = 'Formulating SMT BitVec constraints and running solver...';
-
+    // Diagnostics Lab functions
+    async function runLabZ3() {
+      const c = document.getElementById('lab-z3-constraints').value;
+      const out = document.getElementById('lab-z3-out');
+      out.textContent = 'Solving...';
       try {
         const res = await fetch('/api/symbolic/solve', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ constraints: constraints, target_var: targetVar, length: isNaN(lengthVal) ? null : lengthVal })
+          body: JSON.stringify({ constraints: c, target_var: 'flag', length: 2 })
         });
-        const data = await res.json();
-        btn.disabled = false;
-        statusEl.textContent = data.status || 'Done';
-
-        let text = `[STATUS]: ${data.status} (Solved in ${data.elapsed_seconds || 0}s)\n`;
-        if (data.solved_string) {
-          text += `[ASCII SOLVED STRING]: "${data.solved_string}"\n`;
-        }
-        if (data.winning_flags && data.winning_flags.length > 0) {
-          text += `\n🎉 FLAGS CAPTURED:\n${data.winning_flags.join('\n')}\n`;
-        }
-        if (data.raw_output) {
-          text += `\n[Z3 OUTPUT]:\n${data.raw_output}\n`;
-        }
-        if (data.error) {
-          text += `\n[ERROR]:\n${data.error}\n`;
-        }
-        outputEl.textContent = text;
-      } catch (err) {
-        btn.disabled = false;
-        statusEl.textContent = 'Error';
-        outputEl.textContent = `Z3 Error: ${err.message}`;
-      }
+        const d = await res.json();
+        out.textContent = JSON.stringify(d);
+      } catch (e) { out.textContent = e.message; }
     }
 
-    async function executeWSLCommand() {
-      const cmd = document.getElementById('wsl-command').value.trim();
-      const outputEl = document.getElementById('wsl-output');
-      const btn = document.getElementById('btn-run-wsl');
-
-      if (!cmd) return;
-
-      btn.disabled = true;
-      outputEl.textContent = `Executing inside WSL2 bash: ${cmd}...\n`;
-
+    async function runLabCrypto() {
+      const ct = document.getElementById('lab-crypto-in').value;
+      const out = document.getElementById('lab-crypto-out');
+      out.textContent = 'Decoding...';
       try {
-        const res = await fetch('/api/wsl/exec', {
+        const res = await fetch('/api/mcp/rpc', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ command: cmd, timeout_seconds: 15 })
+          body: JSON.stringify({
+            jsonrpc: '2.0', id: 1, method: 'tools/call',
+            params: { name: 'crypto_cyberchef_analyzer', arguments: { ciphertext: ct } }
+          })
         });
-        const data = await res.json();
-        btn.disabled = false;
+        const d = await res.json();
+        out.textContent = JSON.stringify(d);
+      } catch (e) { out.textContent = e.message; }
+    }
 
-        let text = `[WSL STATUS]: ${data.status}\n`;
-        if (data.distro) text += `[DISTRO]: ${data.distro}\n`;
-        if (data.message) text += `[INFO]: ${data.message}\n`;
-        if (data.fix_command) text += `[ACTION REQUIRED]: ${data.fix_command}\n`;
-        if (data.stdout) text += `\n[STDOUT]:\n${data.stdout}\n`;
-        if (data.stderr) text += `\n[STDERR]:\n${data.stderr}\n`;
-        if (data.winning_flags && data.winning_flags.length > 0) {
-          text += `\n🎉 FLAGS FOUND:\n${data.winning_flags.join('\n')}\n`;
-        }
-        outputEl.textContent = text;
-      } catch (err) {
-        btn.disabled = false;
-        outputEl.textContent = `WSL execution error: ${err.message}`;
-      }
+    async function runLabPlaywright() {
+      const url = document.getElementById('lab-playwright-url').value;
+      const out = document.getElementById('lab-playwright-out');
+      out.textContent = 'Inspecting DOM...';
+      try {
+        const res = await fetch('/api/browser/probe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'navigate_and_inspect', url: url })
+        });
+        const d = await res.json();
+        out.textContent = `Title: ${d.title || 'OK'} (${(d.inputs||[]).length} inputs, ${(d.buttons||[]).length} buttons)`;
+      } catch (e) { out.textContent = e.message; }
+    }
+
+    async function runLabWiener() {
+      const n = document.getElementById('lab-wiener-n').value;
+      const e = document.getElementById('lab-wiener-e').value;
+      const out = document.getElementById('lab-wiener-out');
+      out.textContent = 'Deriving private key...';
+      try {
+        const res = await fetch('/api/crypto/solve', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ attack: 'wiener', n: n, e: e })
+        });
+        const d = await res.json();
+        out.textContent = JSON.stringify(d);
+      } catch (err) { out.textContent = err.message; }
+    }
+
+    async function runLabDNA() {
+      const q = document.getElementById('lab-dna-q').value;
+      const out = document.getElementById('lab-dna-out');
+      out.textContent = 'Querying graph...';
+      try {
+        const res = await fetch('/api/rag/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: q, domain: 'Web' })
+        });
+        const d = await res.json();
+        out.textContent = JSON.stringify(d).substring(0, 100) + '...';
+      } catch (err) { out.textContent = err.message; }
     }
 
     async function fetchReportsList() {
       const grid = document.getElementById('reports-grid');
       if (!grid) return;
-      grid.innerHTML = '<div class="text-xs text-cyan-400 animate-pulse p-4 text-center col-span-full">Scanning docs directory...</div>';
+      grid.innerHTML = '<div class="text-xs text-cyan-400 animate-pulse p-4 text-center col-span-full font-mono">Scanning reports repository...</div>';
 
       try {
         const res = await fetch('/api/reports');
         const data = await res.json();
         const reports = data.reports || [];
 
-        if (reports.length === 0) {
-          grid.innerHTML = '<div class="text-xs text-slate-400 p-4 text-center col-span-full">No reports found in docs/. Run benchmarks or solvers to generate reports.</div>';
-          return;
-        }
-
-        const formatBadges = {
+        const badges = {
           'PDF': 'bg-rose-950 text-rose-300 border-rose-800',
           'DOCX': 'bg-blue-950 text-blue-300 border-blue-800',
           'MD': 'bg-emerald-950 text-emerald-300 border-emerald-800',
@@ -1992,7 +802,7 @@ flag[1] + 10 == 75
           <div class="glass-card rounded-xl p-4 border border-slate-800 hover:border-cyan-800 transition flex flex-col justify-between">
             <div>
               <div class="flex items-center justify-between gap-2 mb-2">
-                <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${formatBadges[r.format] || 'bg-slate-800 text-slate-300 border-slate-700'}">
+                <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${badges[r.format] || 'bg-slate-800 text-slate-300 border-slate-700'}">
                   ${r.format}
                 </span>
                 <span class="text-[10px] text-slate-500 font-mono">${r.size_kb} KB</span>
@@ -2002,11 +812,11 @@ flag[1] + 10 == 75
               </h3>
             </div>
             <div class="mt-3 flex items-center gap-2 pt-2 border-t border-slate-800/80">
-              <a href="${r.download_url}" target="_blank" class="flex-1 py-1.5 px-3 bg-cyan-950 hover:bg-cyan-900 border border-cyan-800 text-cyan-300 text-xs font-semibold rounded-lg text-center transition flex items-center justify-center gap-1.5">
-                <span>👁️</span> Preview
+              <a href="${r.download_url}" target="_blank" class="flex-1 py-1.5 px-3 bg-cyan-950 hover:bg-cyan-900 border border-cyan-800 text-cyan-300 text-xs font-semibold rounded-lg text-center transition">
+                Preview
               </a>
-              <a href="${r.download_url}" download="${r.filename}" class="flex-1 py-1.5 px-3 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 text-xs font-semibold rounded-lg text-center transition flex items-center justify-center gap-1.5">
-                <span>⬇️</span> Download
+              <a href="${r.download_url}" download="${r.filename}" class="flex-1 py-1.5 px-3 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 text-xs font-semibold rounded-lg text-center transition">
+                Download
               </a>
             </div>
           </div>
@@ -2016,10 +826,20 @@ flag[1] + 10 == 75
       }
     }
 
-    // Auto-refresh status on load
+    async function refreshStatus() {
+      try {
+        const res = await fetch('/api/mcp/status');
+        const d = await res.json();
+        const statMcp = document.getElementById('stat-mcp');
+        if (statMcp) {
+          statMcp.textContent = d.is_local ? 'Active (Local :3000)' : 'Active (Direct /sse)';
+        }
+      } catch (e) {}
+    }
+
     window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('session-badge').textContent = currentSessionId;
       refreshStatus();
-      setInterval(refreshStatus, 15000);
     });
   </script>
 </body>
