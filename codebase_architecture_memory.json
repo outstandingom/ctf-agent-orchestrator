@@ -26,5 +26,19 @@
     "target": "GET /api/apex/stage2/spec",
     "context": "Bearer APX_INIT_9b8a7c2d1e required to access SMT constraints",
     "timestamp": "2026-11-11 17:42:18"
+  },
+  {
+    "source": "agent.py",
+    "relationship": "dispatches",
+    "target": "symbolic_execution_solver",
+    "context": "SMT constraint solving for branch logic",
+    "timestamp": "2026-11-16 16:57:23"
+  },
+  {
+    "source": "agent.py",
+    "relationship": "dispatches",
+    "target": "symbolic_execution_solver",
+    "context": "SMT constraint solving for branch logic",
+    "timestamp": "2026-11-16 16:58:35"
   }
 ]
