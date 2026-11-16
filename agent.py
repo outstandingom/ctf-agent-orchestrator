@@ -754,6 +754,45 @@ OPENAI_TOOLS = [
                 "required": ["action"]
             }
         }
+    },
+    # 28. playwright_browser_probe — Real Browser Headless/Headed UI Automation & DOM Inspection
+    {
+        "type": "function",
+        "function": {
+            "name": "playwright_browser_probe",
+            "description": "Interactive headless/headed Playwright Chromium browser. Interacts with web applications, clicks buttons, fills form inputs, evaluates JavaScript on page, intercepts file downloads (.pcap, .zip), and captures screenshot proofs (victory_proof.png) with zero cheating.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["navigate_and_inspect", "click", "fill", "eval_js", "screenshot", "download_intercept"],
+                        "description": "Browser action to execute: 'navigate_and_inspect' (extracts DOM, inputs, scripts), 'click' (clicks selector), 'fill' (types into selector), 'eval_js' (runs custom JS in page context), 'screenshot' (captures visual state), 'download_intercept' (triggers download and saves file)"
+                    },
+                    "url": {
+                        "type": "string",
+                        "description": "Target web URL to navigate to (e.g. 'http://127.0.0.1:8099/')"
+                    },
+                    "selector": {
+                        "type": "string",
+                        "description": "CSS selector to interact with (e.g. '#btn-stage1-init', 'input[name=passcode]', '#btn-submit')"
+                    },
+                    "value": {
+                        "type": "string",
+                        "description": "Text value to fill into the input selector"
+                    },
+                    "script": {
+                        "type": "string",
+                        "description": "JavaScript expression to evaluate inside the page context (e.g. 'window.__SECRET_STATE__')"
+                    },
+                    "screenshot_path": {
+                        "type": "string",
+                        "description": "Local path to save victory screenshot proof (e.g. 'docs/images/victory_proof.png')"
+                    }
+                },
+                "required": ["action"]
+            }
+        }
     }
 ]
 
@@ -769,24 +808,24 @@ def select_relevant_tools(user_prompt: str) -> list:
     core_names = {"search_knowledge_base", "execute_python_sandbox"}
 
     # Web Exploitation
-    if any(k in p for k in ["sql", "ssti", "xss", "csrf", "jwt", "cookie", "http", "web", "url", "bypass", "idor", "fuzz", "param"]):
-        core_names.update(["web_dynamic_fuzzer", "probe_web_endpoint", "ctfd_manage"])
+    if any(k in p for k in ["sql", "ssti", "xss", "csrf", "jwt", "cookie", "http", "web", "url", "bypass", "idor", "fuzz", "param", "browser", "playwright", "click", "dom", "html", "page", "button", "screenshot"]):
+        core_names.update(["web_dynamic_fuzzer", "web_security_probe", "playwright_browser_probe", "ctfd_manage"])
 
     # Cryptography
     if any(k in p for k in ["rsa", "xor", "cipher", "aes", "des", "prng", "seed", "hash", "md5", "sha", "crypto", "decode", "decrypt", "base64", "rot"]):
-        core_names.update(["symbolic_execution_solver", "cyberchef_decode", "parallel_exploit_worker"])
+        core_names.update(["symbolic_execution_solver", "crypto_cyberchef_analyzer", "parallel_exploit_worker"])
 
     # Reverse Engineering / Constraint Solving
     if any(k in p for k in ["crackme", "z3", "equation", "constraint", "branch", "solve", "math", "bitvec"]):
-        core_names.update(["symbolic_execution_solver", "parallel_exploit_worker"])
+        core_names.update(["symbolic_execution_solver", "reverse_engineering_inspector", "parallel_exploit_worker"])
 
     # Binary Exploitation / Linux ELF
     if any(k in p for k in ["elf", "binary", "pwn", "checksec", "rop", "buffer overflow", "gdb", "wsl", "linux", "decompile", "strings"]):
-        core_names.update(["wsl_linux_bridge", "inspect_binary_strings_decompile", "interactive_socket_probe", "symbolic_execution_solver"])
+        core_names.update(["wsl_linux_bridge", "reverse_engineering_inspector", "interactive_socket_probe", "symbolic_execution_solver"])
 
     # Forensics / Network / Steganography
     if any(k in p for k in ["pcap", "wireshark", "stego", "steganography", "image", "png", "wav", "extract", "hidden", "exif", "metadata", "forensic"]):
-        core_names.update(["run_forensics_inspection", "search_flag_patterns", "cyberchef_decode"])
+        core_names.update(["run_forensics_inspection", "search_flag_patterns", "crypto_cyberchef_analyzer"])
 
     # GitHub / MCP
     if any(k in p for k in ["github", "commit", "repo", "push"]):
@@ -827,7 +866,7 @@ def select_relevant_tools(user_prompt: str) -> list:
 
     # Default fallback to top 5 most versatile tools if prompt is broad
     if len(core_names) <= 2:
-        core_names.update(["symbolic_execution_solver", "web_dynamic_fuzzer", "cyberchef_decode", "parallel_exploit_worker"])
+        core_names.update(["symbolic_execution_solver", "web_dynamic_fuzzer", "crypto_cyberchef_analyzer", "parallel_exploit_worker", "playwright_browser_probe"])
 
     return [t for t in OPENAI_TOOLS if t["function"]["name"] in core_names]
 
@@ -2844,28 +2883,197 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
 
         return json.dumps({"error": f"Unknown jailbreak_probe action: {action}"})
 
+    # 28. PLAYWRIGHT INTERACTIVE BROWSER PROBE & DOM INSPECTOR
+    elif tool_name == "playwright_browser_probe":
+        action = tool_input.get("action", "navigate_and_inspect")
+        url = (tool_input.get("url") or "").strip()
+        selector = (tool_input.get("selector") or "").strip()
+        val = tool_input.get("value", "")
+        js_script = (tool_input.get("script") or "").strip()
+        screenshot_path = (tool_input.get("screenshot_path") or "").strip()
+
+        try:
+            from playwright.sync_api import sync_playwright
+        except ImportError:
+            return json.dumps({
+                "status": "error",
+                "error": "Playwright is not installed. Run: pip install playwright && python -m playwright install chromium"
+            })
+
+        try:
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                page = browser.new_page()
+
+                if action == "navigate_and_inspect":
+                    if not url:
+                        browser.close()
+                        return json.dumps({"status": "error", "error": "url is required for navigate_and_inspect"})
+                    
+                    page.goto(url, timeout=20000)
+                    page.wait_for_load_state("domcontentloaded")
+                    title = page.title()
+                    
+                    # Extract interactive DOM elements, buttons, and inputs
+                    inputs = page.evaluate("""
+                        () => Array.from(document.querySelectorAll('input, select, textarea')).map(el => ({
+                            tag: el.tagName.toLowerCase(),
+                            name: el.name || el.id,
+                            type: el.type || '',
+                            id: el.id,
+                            placeholder: el.placeholder || '',
+                            value: el.value || ''
+                        }))
+                    """)
+                    buttons = page.evaluate("""
+                        () => Array.from(document.querySelectorAll('button, input[type=submit], a.btn')).map(el => ({
+                            id: el.id,
+                            text: (el.innerText || el.value || '').trim().slice(0, 50),
+                            className: el.className
+                        }))
+                    """)
+                    scripts = page.evaluate("""
+                        () => Array.from(document.querySelectorAll('script')).map(s => s.src || 'inline_script').filter(Boolean)
+                    """)
+
+                    # Capture DOM text snippet
+                    body_text = page.inner_text("body")[:1000] if page.query_selector("body") else ""
+                    browser.close()
+
+                    return json.dumps({
+                        "status": "success",
+                        "action": "navigate_and_inspect",
+                        "url": url,
+                        "title": title,
+                        "inputs": inputs,
+                        "buttons": buttons,
+                        "script_count": len(scripts),
+                        "scripts_sample": scripts[:5],
+                        "body_text_sample": body_text
+                    }, indent=2)
+
+                elif action == "click":
+                    if not url and not selector:
+                        browser.close()
+                        return json.dumps({"status": "error", "error": "url and selector are required for click"})
+                    if url:
+                        page.goto(url, timeout=20000)
+                    page.wait_for_selector(selector, timeout=8000)
+                    page.click(selector)
+                    page.wait_for_timeout(1000) # Give UI time to update
+                    new_text = page.inner_text("body")[:800] if page.query_selector("body") else ""
+                    browser.close()
+                    return json.dumps({
+                        "status": "success",
+                        "action": "click",
+                        "selector": selector,
+                        "page_state_snippet": new_text
+                    }, indent=2)
+
+                elif action == "fill":
+                    if not url or not selector:
+                        browser.close()
+                        return json.dumps({"status": "error", "error": "url and selector are required for fill"})
+                    page.goto(url, timeout=20000)
+                    page.wait_for_selector(selector, timeout=8000)
+                    page.fill(selector, str(val))
+                    browser.close()
+                    return json.dumps({
+                        "status": "success",
+                        "action": "fill",
+                        "selector": selector,
+                        "filled_value": str(val)
+                    }, indent=2)
+
+                elif action == "eval_js":
+                    if not url or not js_script:
+                        browser.close()
+                        return json.dumps({"status": "error", "error": "url and script are required for eval_js"})
+                    page.goto(url, timeout=20000)
+                    js_result = page.evaluate(js_script)
+                    browser.close()
+                    return json.dumps({
+                        "status": "success",
+                        "action": "eval_js",
+                        "script": js_script,
+                        "eval_result": js_result
+                    }, indent=2)
+
+                elif action == "screenshot":
+                    if not url:
+                        browser.close()
+                        return json.dumps({"status": "error", "error": "url is required for screenshot"})
+                    page.goto(url, timeout=20000)
+                    out_path = screenshot_path or os.path.join(current_dir, "docs", "images", "playwright_proof.png")
+                    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+                    page.screenshot(path=out_path, full_page=True)
+                    browser.close()
+                    return json.dumps({
+                        "status": "success",
+                        "action": "screenshot",
+                        "screenshot_saved": out_path
+                    }, indent=2)
+
+                elif action == "download_intercept":
+                    if not url or not selector:
+                        browser.close()
+                        return json.dumps({"status": "error", "error": "url and selector are required for download_intercept"})
+                    page.goto(url, timeout=20000)
+                    with page.expect_download(timeout=15000) as download_info:
+                        page.click(selector)
+                    download = download_info.value
+                    download_dir = os.path.join(current_dir, "challenges", "apex_gauntlet", "artifacts")
+                    os.makedirs(download_dir, exist_ok=True)
+                    dest_file = os.path.join(download_dir, download.suggested_filename)
+                    download.save_as(dest_file)
+                    browser.close()
+                    return json.dumps({
+                        "status": "success",
+                        "action": "download_intercept",
+                        "downloaded_file": dest_file,
+                        "file_size": os.path.getsize(dest_file)
+                    }, indent=2)
+
+                browser.close()
+                return json.dumps({"status": "error", "error": f"Unknown playwright action: {action}"})
+
+        except Exception as err:
+            return json.dumps({"status": "error", "error": f"Playwright execution error: {str(err)}"})
+
     return json.dumps({"error": f"Unknown tool: {tool_name}"})
 
 # =========================================================================
-# CTF ORCHESTRATOR AGENT CLASS WITH MULTI-TURN SESSION MEMORY
+# CTF ORCHESTRATOR AGENT CLASS WITH MULTI-TURN SESSION MEMORY & FSM
 # =========================================================================
+class CTFAgentPhase:
+    PHASE_1_RECON = "Phase 1: Reconnaissance & Target Discovery"
+    PHASE_2_ANALYSIS = "Phase 2: Vulnerability Analysis & SMT Constraints"
+    PHASE_3_SYNTHESIS = "Phase 3: Exploit Synthesis & Verification"
+    PHASE_4_VERIFY = "Phase 4: Proof Capture & Flag Validation"
+    PHASE_5_SYNC = "Phase 5: DNA Graph Persistence"
+
 class CTFOrchestratorAgent:
     def __init__(self):
         self.provider = LLM_PROVIDER
         self.system_prompt = (
             "You are an expert Autonomous Cybersecurity & CTF Copilot Agent equipped with Python scripting capabilities "
             "(z3-solver, sympy, pycryptodome, randcrack, requests, httpx, socket, BeautifulSoup, base64, hashlib, re). "
-            "When given a challenge: "
-            "1. Determine its domain: Web Application Security, Cryptography, Reverse Engineering & Binary, or Forensics & Log Analysis. "
-            "2. Query your Hugging Face ZeroGPU Vector Knowledge Base or DNA Knowledge Graph for patterns. "
-            "3. Use your specialized tools: web_dynamic_fuzzer, symbolic_execution_solver, wsl_linux_bridge, CyberChef decoder, Binary Strings & Decompiler inspector, Web probe, Forensic Engine, Netcat Socket probe, CTFd manager, parallel_exploit_worker, advanced_crypto_solver (Wiener/Boneh-Durfee/Pollard), pwn_crash_triage (self-healing crash analysis with auto stack-alignment fix), ctfd_speed_listener (first-blood challenge poller). "
-            "4. Verify your exploits autonomously using execute_python_sandbox before returning your answer! You can use z3 (from z3 import *), pycryptodome, sympy, and randcrack directly! "
-            "5. If solving crackmes or reverse engineering constraint equations, use symbolic_execution_solver (Z3). "
-            "6. For web targets, use web_dynamic_fuzzer to perform intelligent differential payload fuzzing (SQLi, SSTI, Command Injection, Traversal) backed by Vector RAG payloads. "
-            "7. For Linux binary exploitation or ELF analysis, use wsl_linux_bridge. "
-            "8. For complex challenges with multiple attack branches or parameter searches, use parallel_exploit_worker to test all variations concurrently! "
-            "9. If you find a new attack relationship, register it with sync_dna_attack_tree. "
-            "10. Output clean, runnable exploit code and the extracted flag (format: HQX{...}, flag{...}, or CTF{...})."
+            "\n\nOPERATIONAL FINITE STATE MACHINE (FSM):\n"
+            "You MUST navigate challenges through strict operational phases:\n"
+            "1. [Phase 1: Reconnaissance]: Discover DOM inputs, API routes, or binary symbols using playwright_browser_probe, web_dynamic_fuzzer, or reverse_engineering_inspector.\n"
+            "2. [Phase 2: Analysis]: Retrieve vulnerability patterns from DNA Knowledge Graph (search_knowledge_base) and derive mathematical/symbolic constraints.\n"
+            "3. [Phase 3: Synthesis]: Construct deterministic exploits using execute_python_sandbox, advanced_crypto_solver, or symbolic_execution_solver (Z3).\n"
+            "4. [Phase 4: Verification]: Validate exploit execution and capture proof with playwright_browser_probe or search_flag_patterns. NEVER hallucinate flags.\n"
+            "5. [Phase 5: Sync]: Record new causal attack edges into DNA memory using sync_dna_attack_tree for persistent lifelong learning.\n"
+            "\nTOOL DIRECTORY (28 Specialized Engines):\n"
+            "- Web & Browser: playwright_browser_probe, web_dynamic_fuzzer, web_security_probe, ctfd_manage, ctfd_speed_listener\n"
+            "- Crypto & Math: symbolic_execution_solver, advanced_crypto_solver, crypto_cyberchef_analyzer\n"
+            "- Reverse & Pwn: reverse_engineering_inspector, wsl_linux_bridge, pwn_crash_triage, interactive_socket_probe\n"
+            "- Forensics: run_forensics_inspection, search_flag_patterns\n"
+            "- Code & Execution: execute_python_sandbox, parallel_exploit_worker, run_fullstack_terminal, patch_file_diff\n"
+            "- DNA Memory: search_knowledge_base, sync_dna_attack_tree, sync_codebase_memory, query_codebase_memory\n"
+            "- Red-Team & GitHub: jailbreak_probe, read_github_file, commit_github_file, list_github_repos, create_github_branch, create_github_pr\n"
+            "\nOutput clean, runnable exploit code and the extracted flag (format: HQX{...}, flag{...}, or CTF{...})."
         )
 
         if self.provider == "groq":

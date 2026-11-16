@@ -178,6 +178,14 @@ class CTFdListenRequest(BaseModel):
     download_attachments: Optional[bool] = Field(True, description="Auto-download challenge attachments")
     save_dir: Optional[str] = Field(None, description="Local attachment directory")
 
+class PlaywrightProbeRequest(BaseModel):
+    action: str = Field("navigate_and_inspect", description="Browser action: navigate_and_inspect, click, fill, eval_js, screenshot, download_intercept")
+    url: Optional[str] = Field(None, description="Target web challenge URL")
+    selector: Optional[str] = Field(None, description="CSS selector to interact with")
+    value: Optional[str] = Field(None, description="Value to type/fill")
+    script: Optional[str] = Field(None, description="JavaScript expression to evaluate")
+    screenshot_path: Optional[str] = Field(None, description="Path to save screenshot capture")
+
 def render_dashboard_html() -> str:
     candidates = [
         os.path.join(current_dir, "public", "index.html"),
@@ -576,6 +584,22 @@ def run_ctfd_listen_endpoint(req: CTFdListenRequest):
         "max_polls": req.max_polls,
         "download_attachments": req.download_attachments,
         "save_dir": req.save_dir
+    })
+    try:
+        return json.loads(raw)
+    except Exception:
+        return {"response": raw}
+
+@app.post("/api/browser/probe")
+@app.post("/browser/probe")
+def run_browser_probe_endpoint(req: PlaywrightProbeRequest):
+    raw = execute_tool("playwright_browser_probe", {
+        "action": req.action,
+        "url": req.url,
+        "selector": req.selector,
+        "value": req.value,
+        "script": req.script,
+        "screenshot_path": req.screenshot_path
     })
     try:
         return json.loads(raw)
