@@ -11,7 +11,13 @@ services:
       - key: HOST
         value: 0.0.0.0
       - key: LLM_PROVIDER
-        value: groq
+        value: deepseek
+      - key: DEEPSEEK_API_KEY
+        sync: false
+      - key: DEEPSEEK_MODEL
+        value: deepseek/deepseek-chat
+      - key: DEEPSEEK_BASE_URL
+        value: https://openrouter.ai/api/v1
       - key: GROQ_API_KEY
         sync: false
       - key: GROQ_MODEL
