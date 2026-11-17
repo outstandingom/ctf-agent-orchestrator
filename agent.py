@@ -896,6 +896,113 @@ OPENAI_TOOLS = [
                 "required": ["code"]
             }
         }
+    },
+    # 29. STRIX-INSPIRED MISSION TODO CHECKLIST PLANNER
+    {
+        "type": "function",
+        "function": {
+            "name": "strix_mission_todo_planner",
+            "description": "Strix-inspired sub-goal checklist planner. Decomposes the mission into structured action items, tracks progress ('pending', 'in_progress', 'done'), and prevents context drift in complex multi-step audits.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["add", "update", "list", "complete"],
+                        "description": "Action: 'add' new task, 'update' task status, 'list' all tasks, 'complete' a task"
+                    },
+                    "task": {"type": "string", "description": "Description of the task to add or update"},
+                    "task_id": {"type": "integer", "description": "ID of the task to update/complete"},
+                    "status": {
+                        "type": "string",
+                        "enum": ["pending", "in_progress", "done"],
+                        "description": "Status of the task"
+                    },
+                    "priority": {
+                        "type": "string",
+                        "enum": ["critical", "high", "normal", "low"],
+                        "description": "Priority level (default: normal)"
+                    }
+                },
+                "required": ["action"]
+            }
+        }
+    },
+    # 30. STRIX-INSPIRED ATTACK SURFACE COVERAGE MATRIX
+    {
+        "type": "function",
+        "function": {
+            "name": "strix_attack_surface_coverage",
+            "description": "Strix-inspired attack surface coverage matrix. Tracks discovered endpoints, parameters, and methods. Quantifies tested vs untested surfaces (coverage %) and records audit outcomes ('reported', 'no_issue_found', 'ruled_out', 'needs_follow_up').",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["register", "record_outcome", "summary"],
+                        "description": "Action: 'register' new endpoints, 'record_outcome' of testing an endpoint, 'summary' of current coverage"
+                    },
+                    "endpoint": {"type": "string", "description": "Target endpoint URL or route (e.g. /api/auth/login)"},
+                    "method": {"type": "string", "description": "HTTP method (GET, POST, PUT, DELETE, etc.)"},
+                    "parameters": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "List of parameters tested (e.g. ['username', 'password', 'token'])"
+                    },
+                    "outcome": {
+                        "type": "string",
+                        "enum": ["reported", "no_issue_found", "ruled_out", "needs_follow_up"],
+                        "description": "Audit outcome for this surface"
+                    },
+                    "vulnerability": {"type": "string", "description": "Vulnerability identified (if any, e.g. 'SQL Injection', 'IDOR')"},
+                    "evidence": {"type": "string", "description": "Brief proof or status rationale"}
+                },
+                "required": ["action"]
+            }
+        }
+    },
+    # 31. REA (REVERSE ENGINEER ANYTHING) ENGINE
+    {
+        "type": "function",
+        "function": {
+            "name": "rea_reverse_engineer_tool",
+            "description": "REA (Reverse Engineer Anything) Engine. Executes deep binary decompilation to C pseudocode, cross-references (xrefs), procedure search, web bundle script reconstruction, and Android APK decoding.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["decompile", "search", "xrefs", "analyze_web_bundle", "export_web_scripts", "decode_apk"],
+                        "description": "Reverse engineering action to perform"
+                    },
+                    "target_path": {"type": "string", "description": "Local path to binary, ELF, APK, or bundle file"},
+                    "address_or_symbol": {"type": "string", "description": "Procedure name, symbol, or hex address to decompile / xref (e.g. 'main', 'check_password', '0x401122')"},
+                    "pattern": {"type": "string", "description": "Text or regex string pattern to search for in binary strings/procedures"},
+                    "url": {"type": "string", "description": "Web URL for analyze_web_bundle or export_web_scripts"}
+                },
+                "required": ["action"]
+            }
+        }
+    },
+    # 32. STRIX-INSPIRED HTTP PROXY REPEATER & TAMPERER
+    {
+        "type": "function",
+        "function": {
+            "name": "strix_http_proxy_repeater",
+            "description": "Strix-inspired HTTP Request Tamperer & Repeater (Burp/Caido style). Replays captured requests with modified headers, cookies, or payloads to test parameter tampering, auth bypass, and IDOR.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "url": {"type": "string", "description": "Target endpoint URL to replay/tamper against"},
+                    "method": {"type": "string", "enum": ["GET", "POST", "PUT", "DELETE", "PATCH"], "description": "HTTP method (default: GET)"},
+                    "headers": {"type": "object", "description": "Custom headers dictionary (e.g. {'Authorization': 'Bearer ...', 'Content-Type': 'application/json'})"},
+                    "params": {"type": "object", "description": "URL query parameters dictionary"},
+                    "data": {"type": "string", "description": "Raw string or JSON payload body to send"},
+                    "baseline_url": {"type": "string", "description": "Optional baseline URL to compute differential response analysis against"}
+                },
+                "required": ["url"]
+            }
+        }
     }
 ]
 
@@ -908,7 +1015,13 @@ def select_relevant_tools(user_prompt: str) -> list:
     Cuts tool schema token payload by ~65-75%, eliminating Groq token rate limit 429s.
     """
     p = user_prompt.lower()
-    core_names = {"search_knowledge_base", "execute_python_sandbox", "run_python_code"}
+    core_names = {
+        "search_knowledge_base",
+        "execute_python_sandbox",
+        "run_python_code",
+        "strix_mission_todo_planner",
+        "strix_attack_surface_coverage"
+    }
 
     # Web Exploitation
     if any(k in p for k in ["sql", "ssti", "xss", "csrf", "jwt", "cookie", "http", "web", "url", "bypass", "idor", "fuzz", "param", "browser", "playwright", "click", "dom", "html", "page", "button", "screenshot"]):
@@ -921,6 +1034,8 @@ def select_relevant_tools(user_prompt: str) -> list:
             "playwright_click",
             "playwright_fill",
             "playwright_window_size",
+            "strix_http_proxy_repeater",
+            "rea_reverse_engineer_tool",
             "ctfd_manage"
         ])
 
@@ -929,12 +1044,12 @@ def select_relevant_tools(user_prompt: str) -> list:
         core_names.update(["symbolic_execution_solver", "crypto_cyberchef_analyzer", "parallel_exploit_worker"])
 
     # Reverse Engineering / Constraint Solving
-    if any(k in p for k in ["crackme", "z3", "equation", "constraint", "branch", "solve", "math", "bitvec"]):
-        core_names.update(["symbolic_execution_solver", "reverse_engineering_inspector", "parallel_exploit_worker"])
+    if any(k in p for k in ["crackme", "z3", "equation", "constraint", "branch", "solve", "math", "bitvec", "rea", "decompile", "disassemble", "xrefs", "apk", "wasm"]):
+        core_names.update(["symbolic_execution_solver", "reverse_engineering_inspector", "rea_reverse_engineer_tool", "parallel_exploit_worker"])
 
     # Binary Exploitation / Linux ELF
     if any(k in p for k in ["elf", "binary", "pwn", "checksec", "rop", "buffer overflow", "gdb", "wsl", "linux", "decompile", "strings"]):
-        core_names.update(["wsl_linux_bridge", "reverse_engineering_inspector", "interactive_socket_probe", "symbolic_execution_solver"])
+        core_names.update(["wsl_linux_bridge", "reverse_engineering_inspector", "rea_reverse_engineer_tool", "interactive_socket_probe", "symbolic_execution_solver"])
 
     # Forensics / Network / Steganography
     if any(k in p for k in ["pcap", "wireshark", "stego", "steganography", "image", "png", "wav", "extract", "hidden", "exif", "metadata", "forensic"]):
@@ -982,6 +1097,12 @@ def select_relevant_tools(user_prompt: str) -> list:
         core_names.update(["symbolic_execution_solver", "web_dynamic_fuzzer", "crypto_cyberchef_analyzer", "parallel_exploit_worker", "playwright_browser_probe"])
 
     return [t for t in OPENAI_TOOLS if t["function"]["name"] in core_names]
+
+# =========================================================================
+# STRIX & REA ENGINE STATE STORES
+# =========================================================================
+_STRIX_MISSION_TODOS = []  # list of dicts: {"id": int, "task": str, "status": str, "priority": str}
+_STRIX_COVERAGE_MATRIX = {} # endpoint -> dict: {"methods": list, "parameters": list, "outcome": str, "vulnerability": str, "evidence": str}
 
 # =========================================================================
 # TOOL EXECUTION DISPATCHER
@@ -3264,6 +3385,238 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
         elif tool_name == "run_python_code":
             return execute_tool("execute_python_sandbox", {"code": tool_input.get("code", "")})
 
+    # 29. STRIX MISSION TODO PLANNER
+    elif tool_name == "strix_mission_todo_planner":
+        global _STRIX_MISSION_TODOS
+        action = tool_input.get("action", "list")
+        if action == "add":
+            task_desc = tool_input.get("task", "").strip()
+            if not task_desc:
+                return json.dumps({"status": "error", "message": "task description required"})
+            new_id = len(_STRIX_MISSION_TODOS) + 1
+            priority = tool_input.get("priority", "normal")
+            todo_item = {
+                "id": new_id,
+                "task": task_desc,
+                "status": "pending",
+                "priority": priority
+            }
+            _STRIX_MISSION_TODOS.append(todo_item)
+            return json.dumps({
+                "status": "success",
+                "message": f"Task #{new_id} added",
+                "todos": _STRIX_MISSION_TODOS,
+                "total": len(_STRIX_MISSION_TODOS)
+            }, indent=2)
+        elif action in ["update", "complete"]:
+            task_id = tool_input.get("task_id")
+            new_status = "done" if action == "complete" else tool_input.get("status", "in_progress")
+            found = False
+            for t in _STRIX_MISSION_TODOS:
+                if t["id"] == task_id or (task_id is None and tool_input.get("task") in t["task"]):
+                    t["status"] = new_status
+                    if tool_input.get("task"):
+                        t["task"] = tool_input.get("task")
+                    found = True
+                    break
+            completed = sum(1 for t in _STRIX_MISSION_TODOS if t["status"] == "done")
+            return json.dumps({
+                "status": "success" if found else "warning",
+                "message": f"Task #{task_id} updated to {new_status}" if found else "Task ID not found",
+                "progress": f"{completed}/{len(_STRIX_MISSION_TODOS)} tasks completed",
+                "todos": _STRIX_MISSION_TODOS
+            }, indent=2)
+        else: # list
+            completed = sum(1 for t in _STRIX_MISSION_TODOS if t["status"] == "done")
+            return json.dumps({
+                "status": "success",
+                "total": len(_STRIX_MISSION_TODOS),
+                "completed": completed,
+                "pending": len(_STRIX_MISSION_TODOS) - completed,
+                "todos": _STRIX_MISSION_TODOS
+            }, indent=2)
+
+    # 30. STRIX ATTACK SURFACE COVERAGE MATRIX
+    elif tool_name == "strix_attack_surface_coverage":
+        global _STRIX_COVERAGE_MATRIX
+        action = tool_input.get("action", "summary")
+        if action == "register":
+            endpoint = tool_input.get("endpoint", "").strip()
+            method = (tool_input.get("method") or "GET").upper()
+            params = tool_input.get("parameters") or []
+            if endpoint:
+                if endpoint not in _STRIX_COVERAGE_MATRIX:
+                    _STRIX_COVERAGE_MATRIX[endpoint] = {
+                        "methods": [method],
+                        "parameters": params,
+                        "tested": False,
+                        "outcome": "untested",
+                        "vulnerability": None,
+                        "evidence": None
+                    }
+                else:
+                    if method not in _STRIX_COVERAGE_MATRIX[endpoint]["methods"]:
+                        _STRIX_COVERAGE_MATRIX[endpoint]["methods"].append(method)
+                    for p in params:
+                        if p not in _STRIX_COVERAGE_MATRIX[endpoint]["parameters"]:
+                            _STRIX_COVERAGE_MATRIX[endpoint]["parameters"].append(p)
+            return json.dumps({
+                "status": "success",
+                "registered": endpoint,
+                "total_surfaces": len(_STRIX_COVERAGE_MATRIX),
+                "coverage_matrix": _STRIX_COVERAGE_MATRIX
+            }, indent=2)
+        elif action == "record_outcome":
+            endpoint = tool_input.get("endpoint", "").strip()
+            outcome = tool_input.get("outcome", "no_issue_found")
+            vuln = tool_input.get("vulnerability")
+            evidence = tool_input.get("evidence")
+            if endpoint not in _STRIX_COVERAGE_MATRIX:
+                _STRIX_COVERAGE_MATRIX[endpoint] = {
+                    "methods": [(tool_input.get("method") or "GET").upper()],
+                    "parameters": tool_input.get("parameters") or [],
+                    "tested": True,
+                    "outcome": outcome,
+                    "vulnerability": vuln,
+                    "evidence": evidence
+                }
+            else:
+                _STRIX_COVERAGE_MATRIX[endpoint]["tested"] = True
+                _STRIX_COVERAGE_MATRIX[endpoint]["outcome"] = outcome
+                if vuln:
+                    _STRIX_COVERAGE_MATRIX[endpoint]["vulnerability"] = vuln
+                if evidence:
+                    _STRIX_COVERAGE_MATRIX[endpoint]["evidence"] = evidence
+            tested_count = sum(1 for s in _STRIX_COVERAGE_MATRIX.values() if s.get("tested"))
+            total = len(_STRIX_COVERAGE_MATRIX)
+            pct = round((tested_count / total * 100), 1) if total > 0 else 0
+            return json.dumps({
+                "status": "success",
+                "endpoint": endpoint,
+                "outcome": outcome,
+                "coverage_percentage": f"{pct}%",
+                "tested": tested_count,
+                "total": total,
+                "matrix": _STRIX_COVERAGE_MATRIX
+            }, indent=2)
+        else: # summary
+            tested_count = sum(1 for s in _STRIX_COVERAGE_MATRIX.values() if s.get("tested"))
+            total = len(_STRIX_COVERAGE_MATRIX)
+            pct = round((tested_count / total * 100), 1) if total > 0 else 0
+            vulns = [f"{ep}: {data['vulnerability']}" for ep, data in _STRIX_COVERAGE_MATRIX.items() if data.get("vulnerability")]
+            return json.dumps({
+                "status": "success",
+                "coverage_percentage": f"{pct}%",
+                "total_endpoints": total,
+                "tested_endpoints": tested_count,
+                "untested_endpoints": total - tested_count,
+                "confirmed_vulnerabilities": vulns,
+                "surfaces": _STRIX_COVERAGE_MATRIX
+            }, indent=2)
+
+    # 31. REA (REVERSE ENGINEER ANYTHING) SUITE
+    elif tool_name == "rea_reverse_engineer_tool":
+        action = tool_input.get("action", "search")
+        target_path = tool_input.get("target_path", "").strip()
+        address = tool_input.get("address_or_symbol", "").strip()
+        pattern = tool_input.get("pattern", "").strip()
+        url = tool_input.get("url", "").strip()
+
+        cmd = ["npx", "-y", "rea-agents"]
+        if action == "decompile":
+            cmd += ["decompile", target_path]
+            if address:
+                cmd.append(address)
+        elif action == "xrefs":
+            cmd += ["xrefs", target_path]
+            if address:
+                cmd.append(address)
+        elif action == "search":
+            cmd += ["search", target_path]
+            if pattern:
+                cmd.append(pattern)
+        elif action == "analyze_web_bundle":
+            cmd += ["analyze-web-bundle", url or target_path]
+        elif action == "export_web_scripts":
+            out_dir = target_path or os.path.join(current_dir, "docs", "web_scripts")
+            os.makedirs(out_dir, exist_ok=True)
+            cmd += ["export-web-scripts", url, out_dir]
+        elif action == "decode_apk":
+            cmd += ["decode-android-resources", target_path]
+        else:
+            cmd += [action]
+            if target_path:
+                cmd.append(target_path)
+
+        cmd += ["--format", "json"]
+
+        try:
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=30, shell=True)
+            raw_out = res.stdout.strip() or res.stderr.strip()
+            try:
+                parsed = json.loads(raw_out)
+                return json.dumps({"status": "success", "engine": "REA", "action": action, "evidence": parsed}, indent=2)
+            except Exception:
+                return json.dumps({"status": "success", "engine": "REA", "action": action, "output": raw_out[:3000]}, indent=2)
+        except subprocess.TimeoutExpired:
+            return json.dumps({"status": "error", "engine": "REA", "error": "REA operation timed out (30s limit)"})
+        except Exception as e:
+            return json.dumps({"status": "error", "engine": "REA", "error": str(e)})
+
+    # 32. STRIX HTTP PROXY REPEATER & TAMPERER
+    elif tool_name == "strix_http_proxy_repeater":
+        url = tool_input.get("url", "").strip()
+        method = (tool_input.get("method") or "GET").upper()
+        headers = tool_input.get("headers") or {}
+        params = tool_input.get("params") or {}
+        data = tool_input.get("data")
+        baseline_url = tool_input.get("baseline_url")
+
+        t0 = time.time()
+        try:
+            req_headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0"}
+            req_headers.update(headers)
+            resp = requests.request(
+                method=method,
+                url=url,
+                headers=req_headers,
+                params=params,
+                data=data,
+                timeout=10,
+                allow_redirects=True,
+                verify=False
+            )
+            elapsed_ms = round((time.time() - t0) * 1000, 1)
+
+            diff_info = None
+            if baseline_url:
+                try:
+                    b_resp = requests.get(baseline_url, timeout=5, verify=False)
+                    diff_info = {
+                        "baseline_status": b_resp.status_code,
+                        "tampered_status": resp.status_code,
+                        "status_differs": b_resp.status_code != resp.status_code,
+                        "baseline_length": len(b_resp.text),
+                        "tampered_length": len(resp.text),
+                        "length_delta": len(resp.text) - len(b_resp.text)
+                    }
+                except Exception:
+                    pass
+
+            return json.dumps({
+                "status": "success",
+                "url": url,
+                "method": method,
+                "response_code": resp.status_code,
+                "response_length": len(resp.text),
+                "elapsed_ms": elapsed_ms,
+                "response_headers": dict(list(resp.headers.items())[:10]),
+                "response_preview": resp.text[:1500],
+                "differential_analysis": diff_info
+            }, indent=2)
+        except Exception as e:
+            return json.dumps({"status": "error", "url": url, "error": str(e)})
+
     return json.dumps({"error": f"Unknown tool: {tool_name}"})
 
 # =========================================================================
@@ -3325,36 +3678,39 @@ class CTFOrchestratorAgent:
                 "- Do NOT search for a CTF flag. This is a real-world web application vulnerability assessment.\n"
                 "- Write and execute Python verification scripts using 'execute_python_sandbox' (or 'run_python_code') to test endpoints and verify bugs.\n"
                 "- Your final report MUST include: [Vulnerability Name], [CWE ID], [Severity: Critical/High/Medium/Low], [Vulnerable Endpoint & Parameter], [Verified Impact / PoC], and [Remediation Diff].\n"
-                "\nTOOL DIRECTORY (28 Specialized Engines):\n"
+                "\nTOOL DIRECTORY (32 Specialized Engines — Integrated with Strix & REA):\n"
+                "- Strix Planning & Coverage: strix_mission_todo_planner, strix_attack_surface_coverage, strix_http_proxy_repeater\n"
+                "- REA Reverse Engineering: rea_reverse_engineer_tool, reverse_engineering_inspector, wsl_linux_bridge, pwn_crash_triage, interactive_socket_probe\n"
                 "- Web & Browser: playwright_browser_probe, web_dynamic_fuzzer, web_security_probe, ctfd_manage, ctfd_speed_listener\n"
                 "- Crypto & Math: symbolic_execution_solver, advanced_crypto_solver, crypto_cyberchef_analyzer\n"
-                "- Reverse & Pwn: reverse_engineering_inspector, wsl_linux_bridge, pwn_crash_triage, interactive_socket_probe\n"
                 "- Forensics: run_forensics_inspection, search_flag_patterns\n"
-                "- Code & Execution: execute_python_sandbox, parallel_exploit_worker, run_fullstack_terminal, patch_file_diff\n"
+                "- Code & Execution: execute_python_sandbox, run_python_code, parallel_exploit_worker, run_fullstack_terminal, patch_file_diff\n"
                 "- DNA Memory: search_knowledge_base, sync_dna_attack_tree, sync_codebase_memory, query_codebase_memory\n"
                 "- Red-Team & GitHub: jailbreak_probe, read_github_file, commit_github_file, list_github_repos, create_github_branch, create_github_pr\n"
             )
         else: # mode == "flag"
             return (
                 "You are an expert Autonomous Cybersecurity & CTF Copilot Agent equipped with Python scripting capabilities "
-                "(z3-solver, sympy, pycryptodome, randcrack, requests, httpx, socket, BeautifulSoup, base64, hashlib, re). "
+                "(z3-solver, sympy, pycryptodome, randcrack, requests, httpx, socket, BeautifulSoup, base64, hashlib, re), "
+                "Strix-style structured planning, and REA binary decompilation. "
                 "\n\nOPERATIONAL FINITE STATE MACHINE (FSM):\n"
                 "You MUST navigate challenges through strict operational phases:\n"
-                "1. [Phase 1: Reconnaissance & JS Reverse]: Discover DOM inputs, API routes, or binary symbols using playwright_browser_probe, web_dynamic_fuzzer, or reverse_engineering_inspector.\n"
-                "2. [Phase 2: Analysis]: Retrieve vulnerability patterns from DNA Knowledge Graph (search_knowledge_base) and derive mathematical/symbolic constraints.\n"
-                "3. [Phase 3: Synthesis & Exploitation]: Construct and EXECUTE deterministic exploits using execute_python_sandbox, advanced_crypto_solver, or symbolic_execution_solver (Z3).\n"
+                "1. [Phase 1: Reconnaissance, JS Reverse & Planning]: Discover DOM inputs, API routes, or binary symbols using playwright_browser_probe, rea_reverse_engineer_tool, or reverse_engineering_inspector. Plan tasks with strix_mission_todo_planner.\n"
+                "2. [Phase 2: Analysis & Coverage]: Retrieve vulnerability patterns from DNA Knowledge Graph (search_knowledge_base), track endpoints with strix_attack_surface_coverage, and derive mathematical/symbolic constraints.\n"
+                "3. [Phase 3: Synthesis & Exploitation]: Construct and EXECUTE deterministic exploits using execute_python_sandbox, strix_http_proxy_repeater, advanced_crypto_solver, or symbolic_execution_solver (Z3).\n"
                 "4. [Phase 4: Verification]: Validate exploit execution and capture proof with playwright_browser_probe or search_flag_patterns. NEVER hallucinate flags.\n"
                 "5. [Phase 5: Sync]: Record new causal attack edges into DNA memory using sync_dna_attack_tree for persistent lifelong learning.\n"
                 "\nCRITICAL DIRECTIVE ON EXECUTING EXPLOITS:\n"
                 "- You MUST NOT stop after describing the target. You MUST write and execute an exploit script using 'execute_python_sandbox' (or 'run_python_code') to attack the endpoints, solve multi-stage puzzles, and capture the flag.\n"
                 "- If attacking a multi-stage challenge, write a complete Python script in execute_python_sandbox that requests each endpoint, passes tokens/headers, and prints the final flag.\n"
                 "- ALWAYS output the captured flag in the format: HQX{...}, flag{...}, or CTF{...}.\n"
-                "\nTOOL DIRECTORY (28 Specialized Engines):\n"
+                "\nTOOL DIRECTORY (32 Specialized Engines — Integrated with Strix & REA):\n"
+                "- Strix Planning & Coverage: strix_mission_todo_planner, strix_attack_surface_coverage, strix_http_proxy_repeater\n"
+                "- REA Reverse Engineering: rea_reverse_engineer_tool, reverse_engineering_inspector, wsl_linux_bridge, pwn_crash_triage, interactive_socket_probe\n"
                 "- Web & Browser: playwright_browser_probe, web_dynamic_fuzzer, web_security_probe, ctfd_manage, ctfd_speed_listener\n"
                 "- Crypto & Math: symbolic_execution_solver, advanced_crypto_solver, crypto_cyberchef_analyzer\n"
-                "- Reverse & Pwn: reverse_engineering_inspector, wsl_linux_bridge, pwn_crash_triage, interactive_socket_probe\n"
                 "- Forensics: run_forensics_inspection, search_flag_patterns\n"
-                "- Code & Execution: execute_python_sandbox, parallel_exploit_worker, run_fullstack_terminal, patch_file_diff\n"
+                "- Code & Execution: execute_python_sandbox, run_python_code, parallel_exploit_worker, run_fullstack_terminal, patch_file_diff\n"
                 "- DNA Memory: search_knowledge_base, sync_dna_attack_tree, sync_codebase_memory, query_codebase_memory\n"
                 "- Red-Team & GitHub: jailbreak_probe, read_github_file, commit_github_file, list_github_repos, create_github_branch, create_github_pr\n"
             )
@@ -3775,6 +4131,25 @@ def generate_mission_report(prompt: str, final_answer: str, trace: list, elapsed
         md.append(f"- **DevTools Console Log Messages:**")
         for log_msg in console_logs[:4]:
             md.append(f"  - `{log_msg}`")
+
+    # Strix Coverage Summary
+    global _STRIX_COVERAGE_MATRIX, _STRIX_MISSION_TODOS
+    if _STRIX_COVERAGE_MATRIX:
+        tested_count = sum(1 for s in _STRIX_COVERAGE_MATRIX.values() if s.get("tested"))
+        total = len(_STRIX_COVERAGE_MATRIX)
+        pct = round((tested_count / total * 100), 1) if total > 0 else 0
+        md.append(f"\n### 🎯 Strix Attack Surface Coverage: `{pct}%` ({tested_count}/{total} surfaces tested)")
+        for ep, data in list(_STRIX_COVERAGE_MATRIX.items())[:8]:
+            mark = "✅" if data.get("tested") else "⏳"
+            vuln_str = f" — 🚨 **{data['vulnerability']}**" if data.get("vulnerability") else ""
+            md.append(f"- {mark} `{ep}` [{', '.join(data.get('methods', ['GET']))}]: `{data.get('outcome', 'untested')}`{vuln_str}")
+
+    # Strix Todo Checklist Summary
+    if _STRIX_MISSION_TODOS:
+        md.append("\n### 📋 Strix Mission Task Checklist")
+        for item in _STRIX_MISSION_TODOS[:8]:
+            chk = "x" if item.get("status") == "done" else " "
+            md.append(f"- [{chk}] Task #{item.get('id', '-')}: {item.get('task')} `({item.get('status')})`")
 
     md.append("\n## 🛠️ Section 2: How We Did It (Phase-by-Phase Technical Walkthrough)")
     for i, t in enumerate(trace):
