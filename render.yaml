@@ -33,7 +33,9 @@ services:
       - key: MCP_SERVER_URL
         value: https://mcp-server-2sl7.onrender.com
       - key: MCP_API_KEY
-        value: outstandingom_mcp_2026hjfbechjbdhjjfbnkqjkj
+        value: ZmFHIloaoXil8UmO0kL6qikaZihZPrX91kvteBn92N4
+      - key: PLAYWRIGHT_MCP_EXTENSION_TOKEN
+        value: ZmFHIloaoXil8UmO0kL6qikaZihZPrX91kvteBn92N4
       - key: SUPABASE_URL
         value: https://vtlmgubzcktztkuymtir.supabase.co
       - key: SUPABASE_ANON_KEY

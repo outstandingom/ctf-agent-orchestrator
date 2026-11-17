@@ -35,7 +35,8 @@ RAG_URL = os.getenv("RAG_URL", "http://localhost:8001").strip()
 HF_VECTOR_URL = os.getenv("HF_VECTOR_URL", "https://outstandingom-vector.hf.space").strip()
 HF_URL = os.getenv("HF_KNOWLEDGE_URL", "https://outstandingom-knowledge-graph-env.hf.space").strip()
 MCP_SERVER_URL = os.getenv("MCP_SERVER_URL", "https://mcp-server-2sl7.onrender.com").strip()
-MCP_API_KEY = os.getenv("MCP_API_KEY", "").strip()
+MCP_API_KEY = os.getenv("MCP_API_KEY", os.getenv("PLAYWRIGHT_MCP_EXTENSION_TOKEN", "")).strip()
+PLAYWRIGHT_MCP_EXTENSION_TOKEN = os.getenv("PLAYWRIGHT_MCP_EXTENSION_TOKEN", "").strip()
 
 def get_active_mcp_url() -> str:
     """Returns local MCP server if active on port 3000, otherwise falls back to Render cloud gateway."""
