@@ -365,7 +365,7 @@ def solve_challenge_stream(req: SolveRequest):
         for item in result.get("trace", []):
             yield f"data: {json.dumps({'type': 'tool_call', 'item': item})}\n\n"
 
-        yield f"data: {json.dumps({'type': 'final_answer', 'final_answer': result.get('final_answer', ''), 'trace': result.get('trace', []), 'elapsed_seconds': elapsed})}\n\n"
+        yield f"data: {json.dumps({'type': 'final_answer', 'final_answer': result.get('final_answer', ''), 'trace': result.get('trace', []), 'elapsed_seconds': elapsed, 'mission_report': result.get('mission_report')})}\n\n"
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")

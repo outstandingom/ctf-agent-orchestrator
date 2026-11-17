@@ -343,6 +343,34 @@
         </div>
       </div>
 
+      <!-- COMPREHENSIVE POST-MISSION REPORT CARD: WHAT WE DID & HOW WE DID IT -->
+      <div id="mission-report-card" class="hidden glass-card rounded-2xl p-6 border-2 border-cyan-500/40 space-y-4">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-xl">📋</span>
+              <h3 class="text-base font-black text-white uppercase tracking-wider">
+                Post-Mission Audit Report: What We Did & How We Did It
+              </h3>
+            </div>
+            <p class="text-xs text-slate-400 mt-0.5">Comprehensive forensic summary of targets mapped, tests executed, code verified, and proof captured.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="copyMissionReport()" class="px-3.5 py-1.5 bg-slate-900 hover:bg-cyan-950 border border-slate-700 hover:border-cyan-600 text-cyan-300 rounded-lg text-xs font-semibold transition flex items-center gap-1.5">
+              <span>📋</span> Copy Report
+            </button>
+            <button onclick="downloadMissionReport()" class="px-3.5 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-slate-950 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-cyan-500/20">
+              <span>📥</span> Download .md
+            </button>
+          </div>
+        </div>
+
+        <!-- RENDERED MARKDOWN REPORT CONTAINER -->
+        <div id="mission-report-content" class="text-xs leading-relaxed max-h-[500px] overflow-y-auto pr-2 bg-slate-950/70 p-5 rounded-xl border border-slate-800 font-mono space-y-2">
+          <!-- Dynamically populated via marked.parse() -->
+        </div>
+      </div>
+
       <!-- SPLIT VIEW: LIVE AGENT LOGS & PLAYWRIGHT VISUAL PROOF -->
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
@@ -615,6 +643,9 @@
       if (bugCard) bugCard.classList.add('hidden');
       const reconPanel = document.getElementById('devtools-recon-panel');
       if (reconPanel) reconPanel.classList.add('hidden');
+      const reportCard = document.getElementById('mission-report-card');
+      if (reportCard) reportCard.classList.add('hidden');
+      currentMissionReportMd = '';
       document.getElementById('exploit-code-editor').value = '';
       resetFsmSteps();
     }
@@ -863,6 +894,19 @@
                       }
                     }
 
+                    // Render Comprehensive Mission Execution Report ("What We Did & How We Did It")
+                    const reportCard = document.getElementById('mission-report-card');
+                    const reportContent = document.getElementById('mission-report-content');
+                    if (reportCard && reportContent) {
+                      if (ev.mission_report) {
+                        currentMissionReportMd = typeof ev.mission_report === 'object' ? (ev.mission_report.markdown || '') : String(ev.mission_report);
+                      }
+                      if (currentMissionReportMd) {
+                        reportContent.innerHTML = marked.parse(currentMissionReportMd);
+                        reportCard.classList.remove('hidden');
+                      }
+                    }
+
                     // Extract python code block from final answer or from execute_python_sandbox tool calls
                     const codeMatch = ans.match(/```python([\s\S]*?)```/);
                     if (codeMatch) {
@@ -934,6 +978,29 @@
         navigator.clipboard.writeText(code);
         alert('Exploit code copied to clipboard!');
       }
+    }
+
+    function copyMissionReport() {
+      if (currentMissionReportMd) {
+        navigator.clipboard.writeText(currentMissionReportMd);
+        alert('Comprehensive Mission Report copied to clipboard in Markdown format!');
+      } else {
+        alert('No report available yet.');
+      }
+    }
+
+    function downloadMissionReport() {
+      if (!currentMissionReportMd) {
+        alert('No report available to download.');
+        return;
+      }
+      const blob = new Blob([currentMissionReportMd], { type: 'text/markdown;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `audit_report_${currentSessionId}.md`;
+      a.click();
+      URL.revokeObjectURL(url);
     }
 
     async function testDirectMcpConnection() {
