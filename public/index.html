@@ -294,13 +294,26 @@
           <!-- Playwright Screenshot Proof Card -->
           <div class="glass-card rounded-2xl p-5 border border-slate-800">
             <div class="flex items-center justify-between mb-3">
-              <h3 class="text-sm font-bold text-white flex items-center gap-2">
-                <span>📸</span> Browser Visual Proof
-              </h3>
-              <a href="/docs-files/images/playwright_proof.png" target="_blank" class="text-xs text-cyan-400 hover:underline font-mono">Open Full Size ↗</a>
+              <div class="flex items-center gap-2">
+                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                  <span>📸</span> Live Browser Target Preview
+                </h3>
+                <span id="screenshot-target-badge" class="text-[10px] font-mono text-cyan-400 bg-slate-900 border border-slate-800 px-2 py-0.5 rounded truncate max-w-[170px]">Awaiting target</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <button type="button" onclick="captureCurrentUrlScreenshot()" class="text-xs px-2.5 py-1 bg-cyan-950 hover:bg-cyan-900 border border-cyan-800 text-cyan-300 rounded font-mono flex items-center gap-1 transition">
+                  <span>📸</span> Capture
+                </button>
+                <a id="screenshot-full-link" href="/docs-files/images/playwright_proof.png" target="_blank" class="text-xs text-cyan-400 hover:underline font-mono">Full Size ↗</a>
+              </div>
             </div>
-            <div class="bg-black/80 rounded-xl overflow-hidden border border-slate-800 aspect-video flex items-center justify-center relative group">
-              <img id="browser-proof-img" src="/docs-files/images/playwright_proof.png" onerror="this.src='/docs-files/images/apex_gauntlet_victory_proof.png'" alt="Browser Proof" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+            <div class="bg-black/90 rounded-xl overflow-hidden border border-slate-800 aspect-video flex items-center justify-center relative group">
+              <img id="browser-proof-img" src="/docs-files/images/playwright_proof.png" onerror="handleProofImageError(this)" alt="Browser Target Preview" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+              <div id="screenshot-placeholder" class="hidden absolute inset-0 flex flex-col items-center justify-center bg-slate-950/95 text-slate-400 font-mono text-xs p-4 text-center space-y-1">
+                <span class="text-2xl mb-1">🌐</span>
+                <span class="font-semibold text-slate-300">Live Browser Preview</span>
+                <span class="text-[10px] text-slate-500">Enter or paste any website URL above to inspect screenshot.</span>
+              </div>
               <div class="absolute bottom-2 left-2 px-2 py-1 bg-black/80 text-[10px] text-cyan-400 font-mono rounded border border-slate-800">
                 Headless Chromium Proof
               </div>
@@ -520,16 +533,63 @@
       }
     }
 
+    function handleProofImageError(img) {
+      const placeholder = document.getElementById('screenshot-placeholder');
+      if (placeholder) placeholder.classList.remove('hidden');
+      img.style.display = 'none';
+    }
+
+    async function captureCurrentUrlScreenshot(customUrl) {
+      const prompt = customUrl || document.getElementById('challenge-prompt').value.trim();
+      const match = prompt.match(/https?:\/\/[^\s"'>]+/);
+      if (!match) return;
+      const targetUrl = match[0].replace(/[.,;)]+$/, '');
+
+      const badge = document.getElementById('screenshot-target-badge');
+      const placeholder = document.getElementById('screenshot-placeholder');
+      const img = document.getElementById('browser-proof-img');
+      const fullLink = document.getElementById('screenshot-full-link');
+
+      if (badge) badge.textContent = `Capturing: ${targetUrl.slice(0, 22)}...`;
+
+      try {
+        const res = await fetch('/api/browser/capture', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: targetUrl })
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+          const freshUrl = `/docs-files/images/playwright_proof.png?t=${Date.now()}`;
+          img.src = freshUrl;
+          img.style.display = 'block';
+          if (placeholder) placeholder.classList.add('hidden');
+          if (fullLink) fullLink.href = freshUrl;
+          if (badge) badge.textContent = data.title ? `${data.title.slice(0, 25)}...` : targetUrl;
+        } else {
+          if (badge) badge.textContent = 'Capture failed';
+        }
+      } catch (err) {
+        if (badge) badge.textContent = 'Capture error';
+      }
+    }
+
     function loadAutopilotPreset(preset) {
       const promptInput = document.getElementById('challenge-prompt');
+      let targetUrl = '';
       if (preset === 'apex') {
+        targetUrl = 'http://127.0.0.1:8099/';
         promptInput.value = 'http://127.0.0.1:8099/ Inspect DOM, bypass security filters, retrieve passcode, and solve challenge.';
       } else if (preset === 'quantum') {
+        targetUrl = 'http://127.0.0.1:8088/';
         promptInput.value = 'http://127.0.0.1:8088/ Test quantum vault endpoints and extract the defense flag.';
       } else if (preset === 'z3') {
         promptInput.value = 'Solve crackme constraints: flag[0] ^ 0x5A == 105 and flag[1] + 42 == 100. Target variable: flag.';
       } else if (preset === 'wiener') {
         promptInput.value = 'Perform RSA Wiener small private exponent attack with N=17993 and e=905.';
+      }
+      if (targetUrl) {
+        captureCurrentUrlScreenshot(targetUrl);
       }
     }
 
@@ -539,6 +599,9 @@
         alert('Please enter a target URL or challenge description.');
         return;
       }
+
+      // Proactively capture target website screenshot immediately
+      captureCurrentUrlScreenshot();
 
       const btn = document.getElementById('solve-btn');
       const spinner = document.getElementById('solve-spinner');
@@ -588,7 +651,17 @@
                 if (dataStr === '[DONE]') break;
                 try {
                   const ev = JSON.parse(dataStr);
-                  if (ev.type === 'tool_call' && ev.item) {
+                  if (ev.type === 'screenshot_ready') {
+                    const img = document.getElementById('browser-proof-img');
+                    const placeholder = document.getElementById('screenshot-placeholder');
+                    const badge = document.getElementById('screenshot-target-badge');
+                    if (img) {
+                      img.src = `${ev.screenshot_url}?t=${Date.now()}`;
+                      img.style.display = 'block';
+                      if (placeholder) placeholder.classList.add('hidden');
+                    }
+                    if (badge && ev.url) badge.textContent = ev.url;
+                  } else if (ev.type === 'tool_call' && ev.item) {
                     liveTraces.push(ev.item);
                     document.getElementById('trace-count').textContent = `${liveTraces.length} tool calls`;
                     renderTraceList(liveTraces);
@@ -598,6 +671,14 @@
                     if (tName.includes('playwright') || tName.includes('probe') || tName.includes('fuzzer')) {
                       updateFsmStep(1, 'done');
                       updateFsmStep(2, 'active');
+                      // If playwright tool ran, refresh live proof
+                      const img = document.getElementById('browser-proof-img');
+                      if (img) {
+                        img.src = `/docs-files/images/playwright_proof.png?t=${Date.now()}`;
+                        img.style.display = 'block';
+                        const placeholder = document.getElementById('screenshot-placeholder');
+                        if (placeholder) placeholder.classList.add('hidden');
+                      }
                     } else if (tName.includes('knowledge') || tName.includes('symbolic') || tName.includes('crypto')) {
                       updateFsmStep(2, 'done');
                       updateFsmStep(3, 'active');
@@ -636,6 +717,9 @@
                     const proofImg = document.getElementById('browser-proof-img');
                     if (proofImg) {
                       proofImg.src = `/docs-files/images/playwright_proof.png?t=${Date.now()}`;
+                      proofImg.style.display = 'block';
+                      const placeholder = document.getElementById('screenshot-placeholder');
+                      if (placeholder) placeholder.classList.add('hidden');
                     }
                   }
                 } catch (e) {}
@@ -840,6 +924,23 @@
     window.addEventListener('DOMContentLoaded', () => {
       document.getElementById('session-badge').textContent = currentSessionId;
       refreshStatus();
+
+      const promptInput = document.getElementById('challenge-prompt');
+      let typingTimer = null;
+      if (promptInput) {
+        promptInput.addEventListener('input', () => {
+          clearTimeout(typingTimer);
+          typingTimer = setTimeout(() => {
+            captureCurrentUrlScreenshot();
+          }, 600);
+        });
+        promptInput.addEventListener('change', () => {
+          captureCurrentUrlScreenshot();
+        });
+        promptInput.addEventListener('paste', () => {
+          setTimeout(() => captureCurrentUrlScreenshot(), 150);
+        });
+      }
     });
   </script>
 </body>

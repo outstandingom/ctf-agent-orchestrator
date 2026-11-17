@@ -337,6 +337,17 @@ def solve_challenge_stream(req: SolveRequest):
 
     def event_stream():
         yield f"data: {json.dumps({'type': 'init', 'message': 'Agent dispatched'})}\n\n"
+
+        # Check if prompt contains any target website URL, and capture immediate screenshot
+        import re
+        url_match = re.search(r"https?://[^\s\"'>]+", req.prompt)
+        if url_match:
+            target_url = url_match.group(0).rstrip(".,;)")
+            try:
+                execute_tool("playwright_browser_probe", {"action": "navigate_and_inspect", "url": target_url})
+                yield f"data: {json.dumps({'type': 'screenshot_ready', 'url': target_url, 'screenshot_url': '/docs-files/images/playwright_proof.png'})}\n\n"
+            except Exception:
+                pass
         
         agent = CTFOrchestratorAgent()
         if req.provider:
@@ -608,6 +619,29 @@ def run_browser_probe_endpoint(req: PlaywrightProbeRequest):
         return json.loads(raw)
     except Exception:
         return {"response": raw}
+
+@app.post("/api/browser/capture")
+@app.get("/api/browser/capture")
+def capture_browser_screenshot(payload: Optional[Dict[str, Any]] = None, url: Optional[str] = None):
+    """Instantly captures a fresh screenshot of any target website URL via Playwright."""
+    target_url = (payload or {}).get("url") or url or ""
+    if not target_url:
+        raise HTTPException(status_code=400, detail="Target 'url' parameter is required.")
+    
+    raw = execute_tool("playwright_browser_probe", {
+        "action": "navigate_and_inspect",
+        "url": target_url
+    })
+    try:
+        data = json.loads(raw)
+        return {
+            "status": "success",
+            "url": target_url,
+            "title": data.get("title", ""),
+            "screenshot_url": f"/docs-files/images/playwright_proof.png?t={int(time.time() * 1000)}"
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e), "url": target_url}
 
 # =========================================================================
 # DOCUMENT & REPORT INVENTORY ENDPOINTS

@@ -17,7 +17,8 @@ from dotenv import load_dotenv
 # Suppress SSL certificate verification warnings for CTF targets
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+current_dir = os.path.dirname(os.path.abspath(__file__))
+env_path = os.path.join(current_dir, ".env")
 load_dotenv(env_path)
 load_dotenv()
 
@@ -2948,6 +2949,15 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
 
                     # Capture DOM text snippet
                     body_text = page.inner_text("body")[:1000] if page.query_selector("body") else ""
+
+                    # Always capture live screenshot proof of the exact target website visited
+                    default_proof = os.path.join(current_dir, "docs", "images", "playwright_proof.png")
+                    os.makedirs(os.path.dirname(default_proof), exist_ok=True)
+                    try:
+                        page.screenshot(path=default_proof, full_page=False)
+                    except Exception:
+                        pass
+
                     browser.close()
 
                     return json.dumps({
@@ -2955,6 +2965,7 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
                         "action": "navigate_and_inspect",
                         "url": url,
                         "title": title,
+                        "screenshot_captured": default_proof,
                         "inputs": inputs,
                         "buttons": buttons,
                         "script_count": len(scripts),
@@ -2972,6 +2983,14 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
                     page.click(selector)
                     page.wait_for_timeout(1000) # Give UI time to update
                     new_text = page.inner_text("body")[:800] if page.query_selector("body") else ""
+
+                    # Update live screenshot proof after action
+                    default_proof = os.path.join(current_dir, "docs", "images", "playwright_proof.png")
+                    try:
+                        page.screenshot(path=default_proof, full_page=False)
+                    except Exception:
+                        pass
+
                     browser.close()
                     return json.dumps({
                         "status": "success",
@@ -2987,6 +3006,15 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
                     page.goto(url, timeout=20000)
                     page.wait_for_selector(selector, timeout=8000)
                     page.fill(selector, str(val))
+                    page.wait_for_timeout(500)
+
+                    # Update live screenshot proof after fill
+                    default_proof = os.path.join(current_dir, "docs", "images", "playwright_proof.png")
+                    try:
+                        page.screenshot(path=default_proof, full_page=False)
+                    except Exception:
+                        pass
+
                     browser.close()
                     return json.dumps({
                         "status": "success",
