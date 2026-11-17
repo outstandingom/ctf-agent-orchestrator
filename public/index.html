@@ -690,9 +690,18 @@
                     const elapsed = ((performance.now() - startTime) / 1000).toFixed(2);
                     document.getElementById('solve-time-badge').textContent = `⏱️ ${elapsed}s`;
 
-                    // Extract Flag
+                    // Extract Flag from final answer or trace outputs
                     const ans = ev.final_answer || '';
-                    const match = ans.match(/(?:flag|CTF|HQX|hackquest)\{[^}]+\}/i);
+                    let match = ans.match(/(?:flag|CTF|HQX|hackquest)\{[^}]+\}/i);
+                    if (!match) {
+                      const allTraces = (ev.trace && ev.trace.length) ? ev.trace : liveTraces;
+                      for (const t of allTraces) {
+                        const outStr = typeof t.output === 'object' ? JSON.stringify(t.output) : String(t.output || '');
+                        const m = outStr.match(/(?:flag|CTF|HQX|hackquest)\{[^}]+\}/i);
+                        if (m) { match = m; break; }
+                      }
+                    }
+
                     if (match) {
                       lastExtractedFlag = match[0];
                       flagText.textContent = lastExtractedFlag;
@@ -705,12 +714,20 @@
                       document.getElementById('fsm-status-badge').textContent = 'Completed';
                     }
 
-                    // Extract python code block
+                    // Extract python code block from final answer or from execute_python_sandbox tool calls
                     const codeMatch = ans.match(/```python([\s\S]*?)```/);
                     if (codeMatch) {
                       exploitEditor.value = codeMatch[1].trim();
                     } else {
-                      exploitEditor.value = ans;
+                      // Check if any tool call had python code
+                      let foundScript = '';
+                      const allTraces = (ev.trace && ev.trace.length) ? ev.trace : liveTraces;
+                      for (const t of allTraces) {
+                        if (t.args && t.args.code) {
+                          foundScript = t.args.code;
+                        }
+                      }
+                      exploitEditor.value = foundScript ? foundScript.trim() : ans;
                     }
 
                     // Refresh screenshot proof image with cache buster

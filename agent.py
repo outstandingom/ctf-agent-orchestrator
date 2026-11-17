@@ -804,6 +804,94 @@ OPENAI_TOOLS = [
                 "required": ["action"]
             }
         }
+    },
+    # Common Browser & Execution Aliases (Prevents Groq 400 validation failures)
+    {
+        "type": "function",
+        "function": {
+            "name": "playwright_navigate",
+            "description": "Navigate to a web challenge URL and inspect DOM elements, inputs, buttons, and scripts.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "url": {"type": "string", "description": "Target challenge URL"}
+                },
+                "required": ["url"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "playwright_screenshot",
+            "description": "Capture live visual screenshot proof of a web challenge page.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "url": {"type": "string", "description": "Target challenge URL"}
+                },
+                "required": ["url"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "playwright_click",
+            "description": "Click an interactive button or element on the page by CSS selector.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "url": {"type": "string", "description": "Page URL"},
+                    "selector": {"type": "string", "description": "CSS selector to click"}
+                },
+                "required": ["selector"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "playwright_fill",
+            "description": "Fill a form input with text or passcode by CSS selector.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "url": {"type": "string", "description": "Page URL"},
+                    "selector": {"type": "string", "description": "CSS selector to fill"},
+                    "value": {"type": "string", "description": "Value to enter"}
+                },
+                "required": ["selector", "value"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "playwright_window_size",
+            "description": "Get or set the browser viewport window size.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "width": {"type": "integer", "description": "Viewport width (default: 1280)"},
+                    "height": {"type": "integer", "description": "Viewport height (default: 800)"}
+                }
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "run_python_code",
+            "description": "Execute Python exploit code in secure sandbox with requests, z3, hashlib, and extract output.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "code": {"type": "string", "description": "Python source code"}
+                },
+                "required": ["code"]
+            }
+        }
     }
 ]
 
@@ -816,11 +904,21 @@ def select_relevant_tools(user_prompt: str) -> list:
     Cuts tool schema token payload by ~65-75%, eliminating Groq token rate limit 429s.
     """
     p = user_prompt.lower()
-    core_names = {"search_knowledge_base", "execute_python_sandbox"}
+    core_names = {"search_knowledge_base", "execute_python_sandbox", "run_python_code"}
 
     # Web Exploitation
     if any(k in p for k in ["sql", "ssti", "xss", "csrf", "jwt", "cookie", "http", "web", "url", "bypass", "idor", "fuzz", "param", "browser", "playwright", "click", "dom", "html", "page", "button", "screenshot"]):
-        core_names.update(["web_dynamic_fuzzer", "web_security_probe", "playwright_browser_probe", "ctfd_manage"])
+        core_names.update([
+            "web_dynamic_fuzzer",
+            "web_security_probe",
+            "playwright_browser_probe",
+            "playwright_navigate",
+            "playwright_screenshot",
+            "playwright_click",
+            "playwright_fill",
+            "playwright_window_size",
+            "ctfd_manage"
+        ])
 
     # Cryptography
     if any(k in p for k in ["rsa", "xor", "cipher", "aes", "des", "prng", "seed", "hash", "md5", "sha", "crypto", "decode", "decrypt", "base64", "rot"]):
@@ -3078,6 +3176,25 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
         except Exception as err:
             return json.dumps({"status": "error", "error": f"Playwright execution error: {str(err)}"})
 
+    # Browser & Python Sandbox Tool Aliases (Ensures seamless tool routing)
+    elif tool_name in ["playwright_navigate", "playwright_screenshot", "playwright_click", "playwright_fill", "playwright_evaluate", "playwright_eval_js", "playwright_window_size", "run_python_code"] or "playwood" in tool_name:
+        if "playwood" in tool_name or tool_name == "playwright_navigate":
+            action = tool_input.get("action", "navigate_and_inspect")
+            url = tool_input.get("url")
+            return execute_tool("playwright_browser_probe", {"action": action, "url": url})
+        elif tool_name == "playwright_screenshot":
+            return execute_tool("playwright_browser_probe", {"action": "screenshot", "url": tool_input.get("url")})
+        elif tool_name == "playwright_click":
+            return execute_tool("playwright_browser_probe", {"action": "click", "url": tool_input.get("url"), "selector": tool_input.get("selector")})
+        elif tool_name == "playwright_fill":
+            return execute_tool("playwright_browser_probe", {"action": "fill", "url": tool_input.get("url"), "selector": tool_input.get("selector"), "value": tool_input.get("value")})
+        elif tool_name in ["playwright_evaluate", "playwright_eval_js"]:
+            return execute_tool("playwright_browser_probe", {"action": "eval_js", "url": tool_input.get("url"), "script": tool_input.get("script") or tool_input.get("expression")})
+        elif tool_name == "playwright_window_size":
+            return json.dumps({"status": "success", "width": tool_input.get("width", 1280), "height": tool_input.get("height", 800)})
+        elif tool_name == "run_python_code":
+            return execute_tool("execute_python_sandbox", {"code": tool_input.get("code", "")})
+
     return json.dumps({"error": f"Unknown tool: {tool_name}"})
 
 # =========================================================================
@@ -3100,9 +3217,13 @@ class CTFOrchestratorAgent:
             "You MUST navigate challenges through strict operational phases:\n"
             "1. [Phase 1: Reconnaissance]: Discover DOM inputs, API routes, or binary symbols using playwright_browser_probe, web_dynamic_fuzzer, or reverse_engineering_inspector.\n"
             "2. [Phase 2: Analysis]: Retrieve vulnerability patterns from DNA Knowledge Graph (search_knowledge_base) and derive mathematical/symbolic constraints.\n"
-            "3. [Phase 3: Synthesis]: Construct deterministic exploits using execute_python_sandbox, advanced_crypto_solver, or symbolic_execution_solver (Z3).\n"
+            "3. [Phase 3: Synthesis & Exploitation]: Construct and EXECUTE deterministic exploits using execute_python_sandbox, advanced_crypto_solver, or symbolic_execution_solver (Z3).\n"
             "4. [Phase 4: Verification]: Validate exploit execution and capture proof with playwright_browser_probe or search_flag_patterns. NEVER hallucinate flags.\n"
             "5. [Phase 5: Sync]: Record new causal attack edges into DNA memory using sync_dna_attack_tree for persistent lifelong learning.\n"
+            "\nCRITICAL DIRECTIVE ON EXECUTING EXPLOITS:\n"
+            "- You MUST NOT stop after describing the target. You MUST write and execute an exploit script using 'execute_python_sandbox' (or 'run_python_code') to attack the endpoints, solve multi-stage puzzles, and capture the flag.\n"
+            "- If attacking a multi-stage challenge, write a complete Python script in execute_python_sandbox that requests each endpoint, passes tokens/headers, and prints the final flag.\n"
+            "- ALWAYS output the captured flag in the format: HQX{...}, flag{...}, or CTF{...}.\n"
             "\nTOOL DIRECTORY (28 Specialized Engines):\n"
             "- Web & Browser: playwright_browser_probe, web_dynamic_fuzzer, web_security_probe, ctfd_manage, ctfd_speed_listener\n"
             "- Crypto & Math: symbolic_execution_solver, advanced_crypto_solver, crypto_cyberchef_analyzer\n"
@@ -3111,7 +3232,6 @@ class CTFOrchestratorAgent:
             "- Code & Execution: execute_python_sandbox, parallel_exploit_worker, run_fullstack_terminal, patch_file_diff\n"
             "- DNA Memory: search_knowledge_base, sync_dna_attack_tree, sync_codebase_memory, query_codebase_memory\n"
             "- Red-Team & GitHub: jailbreak_probe, read_github_file, commit_github_file, list_github_repos, create_github_branch, create_github_pr\n"
-            "\nOutput clean, runnable exploit code and the extracted flag (format: HQX{...}, flag{...}, or CTF{...})."
         )
 
         if self.provider == "groq":
@@ -3130,11 +3250,11 @@ class CTFOrchestratorAgent:
             self.client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
             self.model = CLAUDE_MODEL
 
-    def run(self, user_prompt: str, max_turns: int = 10, session_id: Optional[str] = None) -> str:
+    def run(self, user_prompt: str, max_turns: int = 18, session_id: Optional[str] = None) -> str:
         trace_result = self.run_with_trace(user_prompt, max_turns, session_id=session_id)
         return trace_result.get("final_answer", "")
 
-    def run_with_trace(self, user_prompt: str, max_turns: int = 10, session_id: Optional[str] = None) -> dict:
+    def run_with_trace(self, user_prompt: str, max_turns: int = 18, session_id: Optional[str] = None) -> dict:
         sess_id = session_id or str(uuid.uuid4())
         print(f"\n[CTF AGENT STARTED] Engine: {self.provider.upper()} | Model: {self.model} | Session: {sess_id}", flush=True)
         print(f"Task: {user_prompt}\n" + "-"*50, flush=True)
@@ -3190,9 +3310,50 @@ class CTFOrchestratorAgent:
                         break
                     except Exception as err:
                         last_err = err
-                        err_str = str(err).lower()
-                        if "429" in err_str or "rate limit" in err_str:
-                            time.sleep(1.5)
+                        err_str = str(err)
+                        # Groq tool call validation error recovery:
+                        # "tool call validation failed: attempted to call tool 'XYZ' which was not in request.tools"
+                        if "tool call validation failed" in err_str.lower() or "attempted to call tool" in err_str.lower():
+                            match = re.search(r"tool ['\"]([^'\"]+)['\"]", err_str)
+                            if match:
+                                missing_tool = match.group(1)
+                                found = False
+                                for t in OPENAI_TOOLS:
+                                    if t.get("function", {}).get("name") == missing_tool:
+                                        if t not in active_tools:
+                                            active_tools.append(t)
+                                        found = True
+                                        break
+                                if not found:
+                                    active_tools.append({
+                                        "type": "function",
+                                        "function": {
+                                            "name": missing_tool,
+                                            "description": f"Dynamic execution alias for {missing_tool}",
+                                            "parameters": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "action": {"type": "string"},
+                                                    "url": {"type": "string"},
+                                                    "code": {"type": "string"},
+                                                    "selector": {"type": "string"},
+                                                    "value": {"type": "string"}
+                                                }
+                                            }
+                                        }
+                                    })
+                                try:
+                                    response = self.client.chat.completions.create(
+                                        model=model_candidate,
+                                        messages=messages,
+                                        tools=active_tools,
+                                        tool_choice="auto"
+                                    )
+                                    break
+                                except Exception as err2:
+                                    last_err = err2
+                        if "429" in err_str.lower() or "rate limit" in err_str.lower():
+                            time.sleep(2.0)
                             continue
                         break
                 if response is not None:
@@ -3231,12 +3392,36 @@ class CTFOrchestratorAgent:
                     })
             else:
                 final_text = msg.content or ""
+                # Check if flag exists in final_text or any trace item
+                flag_found = re.search(r"(?:flag|CTF|HQX|hackquest)\{[^}]+\}", final_text, re.IGNORECASE)
+                if not flag_found:
+                    for t in trace:
+                        if re.search(r"(?:flag|CTF|HQX|hackquest)\{[^}]+\}", str(t.get("output", "")), re.IGNORECASE):
+                            flag_found = True
+                            break
+
+                # If no flag has been captured and turns remain, enforce the Autonomous Exploit Loop!
+                if not flag_found and turn < max_turns - 1:
+                    directive = (
+                        "AUTONOMOUS EXPLOIT DIRECTIVE: The challenge is not solved yet and no CTF flag has been captured. "
+                        "Do not merely describe the attack steps, hypotheses, or stop. You MUST now write and execute a Python script using 'execute_python_sandbox' "
+                        "to attack the target API/endpoints, solve mathematical or reverse-engineering constraints, verify output, and capture the flag. "
+                        "Execute the script using execute_python_sandbox now."
+                    )
+                    messages.append({"role": "user", "content": directive})
+                    continue
+
                 # Persist updated session history
                 save_session_history(session_id, messages)
                 return final_text
 
         save_session_history(session_id, messages)
-        return "Agent reached maximum execution turns."
+        # Check if flag was captured in any trace item
+        for t in trace:
+            found = re.findall(r"(?:flag|CTF|HQX|hackquest)\{[^}]+\}", str(t.get("output", "")), re.IGNORECASE)
+            if found:
+                return f"[AUTONOMOUS EXPLOIT VICTORY] Captured Flag: {found[0]}"
+        return "Agent reached maximum execution turns. Target investigated in trace. Review exploit scripts or run with increased max_turns."
 
     def _run_anthropic_trace(self, user_prompt: str, max_turns: int, trace: list, session_id: str) -> str:
         import anthropic
@@ -3293,11 +3478,35 @@ class CTFOrchestratorAgent:
                 messages.append({"role": "user", "content": tool_results})
             else:
                 final_text = "".join([b.text for b in response.content if b.type == "text"])
+                # Check if flag exists in final_text or any trace item
+                flag_found = re.search(r"(?:flag|CTF|HQX|hackquest)\{[^}]+\}", final_text, re.IGNORECASE)
+                if not flag_found:
+                    for t in trace:
+                        if re.search(r"(?:flag|CTF|HQX|hackquest)\{[^}]+\}", str(t.get("output", "")), re.IGNORECASE):
+                            flag_found = True
+                            break
+
+                # If no flag has been captured and turns remain, enforce the Autonomous Exploit Loop!
+                if not flag_found and turn < max_turns - 1:
+                    directive = (
+                        "AUTONOMOUS EXPLOIT DIRECTIVE: The challenge is not solved yet and no CTF flag has been captured. "
+                        "Do not merely describe the attack steps, hypotheses, or stop. You MUST now write and execute a Python script using 'execute_python_sandbox' "
+                        "to attack the target API/endpoints, solve mathematical or reverse-engineering constraints, verify output, and capture the flag. "
+                        "Execute the script using execute_python_sandbox now."
+                    )
+                    messages.append({"role": "user", "content": directive})
+                    continue
+
                 save_session_history(session_id, messages)
                 return final_text
 
         save_session_history(session_id, messages)
-        return "Agent reached maximum execution turns."
+        # Check if flag was captured in any trace item
+        for t in trace:
+            found = re.findall(r"(?:flag|CTF|HQX|hackquest)\{[^}]+\}", str(t.get("output", "")), re.IGNORECASE)
+            if found:
+                return f"[AUTONOMOUS EXPLOIT VICTORY] Captured Flag: {found[0]}"
+        return "Agent reached maximum execution turns. Target investigated in trace. Review exploit scripts or run with increased max_turns."
 
 # =========================================================================
 # SUPABASE LOGGING HELPER WITH SESSION ID TRACKING
