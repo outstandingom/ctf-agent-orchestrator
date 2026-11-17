@@ -3018,31 +3018,89 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
                     if not url:
                         browser.close()
                         return json.dumps({"status": "error", "error": "url is required for navigate_and_inspect"})
-                    
+
+                    console_logs = []
+                    network_calls = []
+                    page.on("console", lambda msg: console_logs.append(f"[{msg.type}] {msg.text[:200]}"))
+                    page.on("request", lambda req: network_calls.append({"url": req.url, "method": req.method}))
+
                     page.goto(url, timeout=20000)
-                    page.wait_for_load_state("domcontentloaded")
+                    try:
+                        page.wait_for_load_state("domcontentloaded", timeout=5000)
+                    except Exception:
+                        pass
                     title = page.title()
-                    
-                    # Extract interactive DOM elements, buttons, and inputs
-                    inputs = page.evaluate("""
-                        () => Array.from(document.querySelectorAll('input, select, textarea')).map(el => ({
-                            tag: el.tagName.toLowerCase(),
-                            name: el.name || el.id,
-                            type: el.type || '',
-                            id: el.id,
-                            placeholder: el.placeholder || '',
-                            value: el.value || ''
-                        }))
-                    """)
-                    buttons = page.evaluate("""
-                        () => Array.from(document.querySelectorAll('button, input[type=submit], a.btn')).map(el => ({
-                            id: el.id,
-                            text: (el.innerText || el.value || '').trim().slice(0, 50),
-                            className: el.className
-                        }))
-                    """)
-                    scripts = page.evaluate("""
-                        () => Array.from(document.querySelectorAll('script')).map(s => s.src || 'inline_script').filter(Boolean)
+
+                    # Deep Frontend Code Reverse Engineering (DOM, Inline JS, API Endpoints, Secrets, Comments)
+                    frontend_analysis = page.evaluate(r"""
+                        () => {
+                            // 1. Inputs, Forms, Buttons
+                            const inputs = Array.from(document.querySelectorAll('input, select, textarea')).map(el => ({
+                                tag: el.tagName.toLowerCase(),
+                                name: el.name || el.id,
+                                type: el.type || '',
+                                id: el.id,
+                                placeholder: el.placeholder || '',
+                                value: el.value || ''
+                            }));
+                            const forms = Array.from(document.querySelectorAll('form')).map(f => ({
+                                action: f.action || '',
+                                method: (f.method || 'GET').toUpperCase(),
+                                id: f.id || ''
+                            }));
+                            const buttons = Array.from(document.querySelectorAll('button, input[type=submit], a.btn, [role="button"]')).map(el => ({
+                                id: el.id,
+                                text: (el.innerText || el.value || '').trim().slice(0, 50),
+                                className: el.className
+                            }));
+
+                            // 2. Extract scripts and aggregate code for static analysis
+                            const scriptElements = Array.from(document.querySelectorAll('script'));
+                            const externalScripts = [];
+                            const inlineScripts = [];
+                            let aggregatedCode = '';
+
+                            for (const s of scriptElements) {
+                                if (s.src) {
+                                    externalScripts.push(s.src);
+                                } else if (s.innerHTML && s.innerHTML.trim()) {
+                                    const code = s.innerHTML.trim();
+                                    inlineScripts.push(code.slice(0, 1500));
+                                    aggregatedCode += '\\n' + code;
+                                }
+                            }
+
+                            // 3. Extract HTML Comments (often contain developer notes, passwords, hints)
+                            const comments = [];
+                            const iterator = document.createNodeIterator(document.documentElement, NodeFilter.SHOW_COMMENT, null, false);
+                            let curNode;
+                            while ((curNode = iterator.nextNode()) && comments.length < 10) {
+                                const val = curNode.nodeValue.trim();
+                                if (val) comments.push(val.slice(0, 300));
+                            }
+
+                            // 4. Regex endpoint discovery from inline JavaScript & DOM
+                            const endpointMatches = Array.from(new Set(
+                                (aggregatedCode.match(/(?:['"`])(\/(?:api|v[0-9]|admin|auth|audit|user|flag|data|stage|upload)[^'"`\\s\\)\\{\\}]*)/gi) || [])
+                                .map(m => m.replace(/['"`]/g, ''))
+                            ));
+
+                            // 5. Regex token & secret discovery
+                            const tokenMatches = Array.from(new Set(
+                                (aggregatedCode.match(/(?:[a-zA-Z0-9_\\-]{3,15}_(?:INIT|KEY|TOKEN|SECRET|V3CT0R|ADMIN|SIGNATURE)_[a-zA-Z0-9_\\-!]+)/gi) || [])
+                            ));
+
+                            return {
+                                inputs,
+                                forms,
+                                buttons,
+                                external_scripts: externalScripts,
+                                inline_scripts: inlineScripts,
+                                discovered_endpoints: endpointMatches,
+                                discovered_tokens_secrets: tokenMatches,
+                                html_comments: comments
+                            };
+                        }
                     """)
 
                     # Capture DOM text snippet
@@ -3064,10 +3122,17 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
                         "url": url,
                         "title": title,
                         "screenshot_captured": default_proof,
-                        "inputs": inputs,
-                        "buttons": buttons,
-                        "script_count": len(scripts),
-                        "scripts_sample": scripts[:5],
+                        "devtools_console": console_logs[:10],
+                        "network_requests": network_calls[:15],
+                        "discovered_endpoints": frontend_analysis.get("discovered_endpoints", []),
+                        "discovered_tokens_secrets": frontend_analysis.get("discovered_tokens_secrets", []),
+                        "html_comments": frontend_analysis.get("html_comments", []),
+                        "inputs": frontend_analysis.get("inputs", []),
+                        "forms": frontend_analysis.get("forms", []),
+                        "buttons": frontend_analysis.get("buttons", []),
+                        "external_scripts": frontend_analysis.get("external_scripts", []),
+                        "inline_scripts_analyzed": len(frontend_analysis.get("inline_scripts", [])),
+                        "inline_code_preview": frontend_analysis.get("inline_scripts", [])[:2],
                         "body_text_sample": body_text
                     }, indent=2)
 
@@ -3210,29 +3275,7 @@ class CTFAgentPhase:
 class CTFOrchestratorAgent:
     def __init__(self):
         self.provider = LLM_PROVIDER
-        self.system_prompt = (
-            "You are an expert Autonomous Cybersecurity & CTF Copilot Agent equipped with Python scripting capabilities "
-            "(z3-solver, sympy, pycryptodome, randcrack, requests, httpx, socket, BeautifulSoup, base64, hashlib, re). "
-            "\n\nOPERATIONAL FINITE STATE MACHINE (FSM):\n"
-            "You MUST navigate challenges through strict operational phases:\n"
-            "1. [Phase 1: Reconnaissance]: Discover DOM inputs, API routes, or binary symbols using playwright_browser_probe, web_dynamic_fuzzer, or reverse_engineering_inspector.\n"
-            "2. [Phase 2: Analysis]: Retrieve vulnerability patterns from DNA Knowledge Graph (search_knowledge_base) and derive mathematical/symbolic constraints.\n"
-            "3. [Phase 3: Synthesis & Exploitation]: Construct and EXECUTE deterministic exploits using execute_python_sandbox, advanced_crypto_solver, or symbolic_execution_solver (Z3).\n"
-            "4. [Phase 4: Verification]: Validate exploit execution and capture proof with playwright_browser_probe or search_flag_patterns. NEVER hallucinate flags.\n"
-            "5. [Phase 5: Sync]: Record new causal attack edges into DNA memory using sync_dna_attack_tree for persistent lifelong learning.\n"
-            "\nCRITICAL DIRECTIVE ON EXECUTING EXPLOITS:\n"
-            "- You MUST NOT stop after describing the target. You MUST write and execute an exploit script using 'execute_python_sandbox' (or 'run_python_code') to attack the endpoints, solve multi-stage puzzles, and capture the flag.\n"
-            "- If attacking a multi-stage challenge, write a complete Python script in execute_python_sandbox that requests each endpoint, passes tokens/headers, and prints the final flag.\n"
-            "- ALWAYS output the captured flag in the format: HQX{...}, flag{...}, or CTF{...}.\n"
-            "\nTOOL DIRECTORY (28 Specialized Engines):\n"
-            "- Web & Browser: playwright_browser_probe, web_dynamic_fuzzer, web_security_probe, ctfd_manage, ctfd_speed_listener\n"
-            "- Crypto & Math: symbolic_execution_solver, advanced_crypto_solver, crypto_cyberchef_analyzer\n"
-            "- Reverse & Pwn: reverse_engineering_inspector, wsl_linux_bridge, pwn_crash_triage, interactive_socket_probe\n"
-            "- Forensics: run_forensics_inspection, search_flag_patterns\n"
-            "- Code & Execution: execute_python_sandbox, parallel_exploit_worker, run_fullstack_terminal, patch_file_diff\n"
-            "- DNA Memory: search_knowledge_base, sync_dna_attack_tree, sync_codebase_memory, query_codebase_memory\n"
-            "- Red-Team & GitHub: jailbreak_probe, read_github_file, commit_github_file, list_github_repos, create_github_branch, create_github_pr\n"
-        )
+        self.system_prompt = self.get_system_prompt("flag")
 
         if self.provider == "groq":
             from openai import OpenAI
@@ -3250,20 +3293,69 @@ class CTFOrchestratorAgent:
             self.client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
             self.model = CLAUDE_MODEL
 
-    def run(self, user_prompt: str, max_turns: int = 18, session_id: Optional[str] = None) -> str:
-        trace_result = self.run_with_trace(user_prompt, max_turns, session_id=session_id)
+    def get_system_prompt(self, mode: str = "flag") -> str:
+        if mode == "bug":
+            return (
+                "You are an expert Autonomous Cybersecurity Penetration Tester & Application Security Auditor. "
+                "Your objective is to conduct an in-depth security vulnerability assessment of the target web application or API. "
+                "\n\nOPERATIONAL FINITE STATE MACHINE (FSM):\n"
+                "1. [Phase 1: DevTools Recon & JS Reverse Engineering]: Inspect DOM, extract inline/external scripts, analyze API routes, and review network/console logs using playwright_browser_probe and web_security_probe.\n"
+                "2. [Phase 2: Attack Surface & Threat Modeling]: Identify vulnerable parameters (SQLi, SSTI, IDOR, Auth Bypass, CORS, Logic Flaws, Broken Access Control) and document the threat model.\n"
+                "3. [Phase 3: Multi-Vector Verification]: Construct and run specialized Python test scripts using execute_python_sandbox to confirm vulnerabilities against live endpoints.\n"
+                "4. [Phase 4: Proof of Concept & Proof Capture]: Capture reproduction proof, response indicators, and visual evidence (screenshots).\n"
+                "5. [Phase 5: Security Advisory & Patch]: Synthesize a formal Security Advisory report with CWE classification, severity rating, PoC code, and non-destructive remediation patch.\n"
+                "\nCRITICAL DIRECTIVE:\n"
+                "- Do NOT search for a CTF flag. This is a real-world web application vulnerability assessment.\n"
+                "- Write and execute Python verification scripts using 'execute_python_sandbox' (or 'run_python_code') to test endpoints and verify bugs.\n"
+                "- Your final report MUST include: [Vulnerability Name], [CWE ID], [Severity: Critical/High/Medium/Low], [Vulnerable Endpoint & Parameter], [Verified Impact / PoC], and [Remediation Diff].\n"
+                "\nTOOL DIRECTORY (28 Specialized Engines):\n"
+                "- Web & Browser: playwright_browser_probe, web_dynamic_fuzzer, web_security_probe, ctfd_manage, ctfd_speed_listener\n"
+                "- Crypto & Math: symbolic_execution_solver, advanced_crypto_solver, crypto_cyberchef_analyzer\n"
+                "- Reverse & Pwn: reverse_engineering_inspector, wsl_linux_bridge, pwn_crash_triage, interactive_socket_probe\n"
+                "- Forensics: run_forensics_inspection, search_flag_patterns\n"
+                "- Code & Execution: execute_python_sandbox, parallel_exploit_worker, run_fullstack_terminal, patch_file_diff\n"
+                "- DNA Memory: search_knowledge_base, sync_dna_attack_tree, sync_codebase_memory, query_codebase_memory\n"
+                "- Red-Team & GitHub: jailbreak_probe, read_github_file, commit_github_file, list_github_repos, create_github_branch, create_github_pr\n"
+            )
+        else: # mode == "flag"
+            return (
+                "You are an expert Autonomous Cybersecurity & CTF Copilot Agent equipped with Python scripting capabilities "
+                "(z3-solver, sympy, pycryptodome, randcrack, requests, httpx, socket, BeautifulSoup, base64, hashlib, re). "
+                "\n\nOPERATIONAL FINITE STATE MACHINE (FSM):\n"
+                "You MUST navigate challenges through strict operational phases:\n"
+                "1. [Phase 1: Reconnaissance & JS Reverse]: Discover DOM inputs, API routes, or binary symbols using playwright_browser_probe, web_dynamic_fuzzer, or reverse_engineering_inspector.\n"
+                "2. [Phase 2: Analysis]: Retrieve vulnerability patterns from DNA Knowledge Graph (search_knowledge_base) and derive mathematical/symbolic constraints.\n"
+                "3. [Phase 3: Synthesis & Exploitation]: Construct and EXECUTE deterministic exploits using execute_python_sandbox, advanced_crypto_solver, or symbolic_execution_solver (Z3).\n"
+                "4. [Phase 4: Verification]: Validate exploit execution and capture proof with playwright_browser_probe or search_flag_patterns. NEVER hallucinate flags.\n"
+                "5. [Phase 5: Sync]: Record new causal attack edges into DNA memory using sync_dna_attack_tree for persistent lifelong learning.\n"
+                "\nCRITICAL DIRECTIVE ON EXECUTING EXPLOITS:\n"
+                "- You MUST NOT stop after describing the target. You MUST write and execute an exploit script using 'execute_python_sandbox' (or 'run_python_code') to attack the endpoints, solve multi-stage puzzles, and capture the flag.\n"
+                "- If attacking a multi-stage challenge, write a complete Python script in execute_python_sandbox that requests each endpoint, passes tokens/headers, and prints the final flag.\n"
+                "- ALWAYS output the captured flag in the format: HQX{...}, flag{...}, or CTF{...}.\n"
+                "\nTOOL DIRECTORY (28 Specialized Engines):\n"
+                "- Web & Browser: playwright_browser_probe, web_dynamic_fuzzer, web_security_probe, ctfd_manage, ctfd_speed_listener\n"
+                "- Crypto & Math: symbolic_execution_solver, advanced_crypto_solver, crypto_cyberchef_analyzer\n"
+                "- Reverse & Pwn: reverse_engineering_inspector, wsl_linux_bridge, pwn_crash_triage, interactive_socket_probe\n"
+                "- Forensics: run_forensics_inspection, search_flag_patterns\n"
+                "- Code & Execution: execute_python_sandbox, parallel_exploit_worker, run_fullstack_terminal, patch_file_diff\n"
+                "- DNA Memory: search_knowledge_base, sync_dna_attack_tree, sync_codebase_memory, query_codebase_memory\n"
+                "- Red-Team & GitHub: jailbreak_probe, read_github_file, commit_github_file, list_github_repos, create_github_branch, create_github_pr\n"
+            )
+
+    def run(self, user_prompt: str, max_turns: int = 18, session_id: Optional[str] = None, mode: str = "flag") -> str:
+        trace_result = self.run_with_trace(user_prompt, max_turns, session_id=session_id, mode=mode)
         return trace_result.get("final_answer", "")
 
-    def run_with_trace(self, user_prompt: str, max_turns: int = 18, session_id: Optional[str] = None) -> dict:
+    def run_with_trace(self, user_prompt: str, max_turns: int = 18, session_id: Optional[str] = None, mode: str = "flag") -> dict:
         sess_id = session_id or str(uuid.uuid4())
-        print(f"\n[CTF AGENT STARTED] Engine: {self.provider.upper()} | Model: {self.model} | Session: {sess_id}", flush=True)
+        print(f"\n[CTF AGENT STARTED] Engine: {self.provider.upper()} | Model: {self.model} | Mode: {mode.upper()} | Session: {sess_id}", flush=True)
         print(f"Task: {user_prompt}\n" + "-"*50, flush=True)
 
         trace = []
         if self.provider == "groq":
-            final_ans = self._run_groq_trace(user_prompt, max_turns, trace, sess_id)
+            final_ans = self._run_groq_trace(user_prompt, max_turns, trace, sess_id, mode=mode)
         else:
-            final_ans = self._run_anthropic_trace(user_prompt, max_turns, trace, sess_id)
+            final_ans = self._run_anthropic_trace(user_prompt, max_turns, trace, sess_id, mode=mode)
 
         # Log session execution to Supabase
         captured_flags = re.findall(r"(?:flag|CTF|HQX|hackquest)\{[^}]+\}", final_ans, re.IGNORECASE)
@@ -3274,14 +3366,16 @@ class CTFOrchestratorAgent:
             "final_answer": final_ans,
             "trace": trace,
             "provider": self.provider,
-            "model": self.model
+            "model": self.model,
+            "mode": mode
         }
 
-    def _run_groq_trace(self, user_prompt: str, max_turns: int, trace: list, session_id: str) -> str:
+    def _run_groq_trace(self, user_prompt: str, max_turns: int, trace: list, session_id: str, mode: str = "flag") -> str:
         # Load or initialize conversation history
         messages = get_session_history(session_id)
+        system_prompt = self.get_system_prompt(mode)
         if not messages:
-            messages = [{"role": "system", "content": self.system_prompt}]
+            messages = [{"role": "system", "content": system_prompt}]
 
         messages.append({"role": "user", "content": user_prompt})
 
@@ -3392,30 +3486,46 @@ class CTFOrchestratorAgent:
                     })
             else:
                 final_text = msg.content or ""
-                # Check if flag exists in final_text or any trace item
-                flag_found = re.search(r"(?:flag|CTF|HQX|hackquest)\{[^}]+\}", final_text, re.IGNORECASE)
-                if not flag_found:
-                    for t in trace:
-                        if re.search(r"(?:flag|CTF|HQX|hackquest)\{[^}]+\}", str(t.get("output", "")), re.IGNORECASE):
-                            flag_found = True
-                            break
+                if mode == "bug":
+                    has_audit = any(k in final_text.lower() for k in ["cwe-", "vulnerability:", "severity:", "remediation", "proof of concept", "bug report", "finding:"])
+                    if not has_audit and turn < max_turns - 1:
+                        directive = (
+                            "AUTONOMOUS AUDIT DIRECTIVE: The vulnerability assessment is not complete. "
+                            "Do not merely describe the target. You MUST now write and execute a Python verification script using 'execute_python_sandbox' "
+                            "to test the target endpoints for security flaws (e.g., SQLi, SSTI, IDOR, Auth bypass, CORS, Misconfigs), "
+                            "verify the response, and then output your formal Security Advisory with CWE, Severity, PoC, and Remediation."
+                        )
+                        messages.append({"role": "user", "content": directive})
+                        continue
+                    save_session_history(session_id, messages)
+                    return final_text
+                else:
+                    # mode == "flag"
+                    flag_found = re.search(r"(?:flag|CTF|HQX|hackquest)\{[^}]+\}", final_text, re.IGNORECASE)
+                    if not flag_found:
+                        for t in trace:
+                            if re.search(r"(?:flag|CTF|HQX|hackquest)\{[^}]+\}", str(t.get("output", "")), re.IGNORECASE):
+                                flag_found = True
+                                break
 
-                # If no flag has been captured and turns remain, enforce the Autonomous Exploit Loop!
-                if not flag_found and turn < max_turns - 1:
-                    directive = (
-                        "AUTONOMOUS EXPLOIT DIRECTIVE: The challenge is not solved yet and no CTF flag has been captured. "
-                        "Do not merely describe the attack steps, hypotheses, or stop. You MUST now write and execute a Python script using 'execute_python_sandbox' "
-                        "to attack the target API/endpoints, solve mathematical or reverse-engineering constraints, verify output, and capture the flag. "
-                        "Execute the script using execute_python_sandbox now."
-                    )
-                    messages.append({"role": "user", "content": directive})
-                    continue
+                    # If no flag has been captured and turns remain, enforce the Autonomous Exploit Loop!
+                    if not flag_found and turn < max_turns - 1:
+                        directive = (
+                            "AUTONOMOUS EXPLOIT DIRECTIVE: The challenge is not solved yet and no CTF flag has been captured. "
+                            "Do not merely describe the attack steps, hypotheses, or stop. You MUST now write and execute a Python script using 'execute_python_sandbox' "
+                            "to attack the target API/endpoints, solve mathematical or reverse-engineering constraints, verify output, and capture the flag. "
+                            "Execute the script using execute_python_sandbox now."
+                        )
+                        messages.append({"role": "user", "content": directive})
+                        continue
 
-                # Persist updated session history
-                save_session_history(session_id, messages)
-                return final_text
+                    # Persist updated session history
+                    save_session_history(session_id, messages)
+                    return final_text
 
         save_session_history(session_id, messages)
+        if mode == "bug":
+            return "Vulnerability Audit Complete. Review tool trace for executed test scripts, endpoint findings, and PoC results."
         # Check if flag was captured in any trace item
         for t in trace:
             found = re.findall(r"(?:flag|CTF|HQX|hackquest)\{[^}]+\}", str(t.get("output", "")), re.IGNORECASE)
@@ -3423,7 +3533,7 @@ class CTFOrchestratorAgent:
                 return f"[AUTONOMOUS EXPLOIT VICTORY] Captured Flag: {found[0]}"
         return "Agent reached maximum execution turns. Target investigated in trace. Review exploit scripts or run with increased max_turns."
 
-    def _run_anthropic_trace(self, user_prompt: str, max_turns: int, trace: list, session_id: str) -> str:
+    def _run_anthropic_trace(self, user_prompt: str, max_turns: int, trace: list, session_id: str, mode: str = "flag") -> str:
         import anthropic
         claude_tools = [
             {
@@ -3435,6 +3545,7 @@ class CTFOrchestratorAgent:
         ]
 
         messages = get_session_history(session_id)
+        system_prompt = self.get_system_prompt(mode)
         if not messages:
             messages = []
 
@@ -3445,7 +3556,7 @@ class CTFOrchestratorAgent:
                 response = self.client.messages.create(
                     model=self.model,
                     max_tokens=2048,
-                    system=self.system_prompt,
+                    system=system_prompt,
                     tools=claude_tools,
                     messages=messages
                 )
@@ -3478,29 +3589,44 @@ class CTFOrchestratorAgent:
                 messages.append({"role": "user", "content": tool_results})
             else:
                 final_text = "".join([b.text for b in response.content if b.type == "text"])
-                # Check if flag exists in final_text or any trace item
-                flag_found = re.search(r"(?:flag|CTF|HQX|hackquest)\{[^}]+\}", final_text, re.IGNORECASE)
-                if not flag_found:
-                    for t in trace:
-                        if re.search(r"(?:flag|CTF|HQX|hackquest)\{[^}]+\}", str(t.get("output", "")), re.IGNORECASE):
-                            flag_found = True
-                            break
+                if mode == "bug":
+                    has_audit = any(k in final_text.lower() for k in ["cwe-", "vulnerability:", "severity:", "remediation", "proof of concept", "bug report", "finding:"])
+                    if not has_audit and turn < max_turns - 1:
+                        directive = (
+                            "AUTONOMOUS AUDIT DIRECTIVE: The vulnerability assessment is not complete. "
+                            "Do not merely describe the target. You MUST now write and execute a Python verification script using 'execute_python_sandbox' "
+                            "to test the target endpoints for security flaws (e.g., SQLi, SSTI, IDOR, Auth bypass, CORS, Misconfigs), "
+                            "verify the response, and then output your formal Security Advisory with CWE, Severity, PoC, and Remediation."
+                        )
+                        messages.append({"role": "user", "content": directive})
+                        continue
+                    save_session_history(session_id, messages)
+                    return final_text
+                else:
+                    flag_found = re.search(r"(?:flag|CTF|HQX|hackquest)\{[^}]+\}", final_text, re.IGNORECASE)
+                    if not flag_found:
+                        for t in trace:
+                            if re.search(r"(?:flag|CTF|HQX|hackquest)\{[^}]+\}", str(t.get("output", "")), re.IGNORECASE):
+                                flag_found = True
+                                break
 
-                # If no flag has been captured and turns remain, enforce the Autonomous Exploit Loop!
-                if not flag_found and turn < max_turns - 1:
-                    directive = (
-                        "AUTONOMOUS EXPLOIT DIRECTIVE: The challenge is not solved yet and no CTF flag has been captured. "
-                        "Do not merely describe the attack steps, hypotheses, or stop. You MUST now write and execute a Python script using 'execute_python_sandbox' "
-                        "to attack the target API/endpoints, solve mathematical or reverse-engineering constraints, verify output, and capture the flag. "
-                        "Execute the script using execute_python_sandbox now."
-                    )
-                    messages.append({"role": "user", "content": directive})
-                    continue
+                    # If no flag has been captured and turns remain, enforce the Autonomous Exploit Loop!
+                    if not flag_found and turn < max_turns - 1:
+                        directive = (
+                            "AUTONOMOUS EXPLOIT DIRECTIVE: The challenge is not solved yet and no CTF flag has been captured. "
+                            "Do not merely describe the attack steps, hypotheses, or stop. You MUST now write and execute a Python script using 'execute_python_sandbox' "
+                            "to attack the target API/endpoints, solve mathematical or reverse-engineering constraints, verify output, and capture the flag. "
+                            "Execute the script using execute_python_sandbox now."
+                        )
+                        messages.append({"role": "user", "content": directive})
+                        continue
 
-                save_session_history(session_id, messages)
-                return final_text
+                    save_session_history(session_id, messages)
+                    return final_text
 
         save_session_history(session_id, messages)
+        if mode == "bug":
+            return "Vulnerability Audit Complete. Review tool trace for executed test scripts, endpoint findings, and PoC results."
         # Check if flag was captured in any trace item
         for t in trace:
             found = re.findall(r"(?:flag|CTF|HQX|hackquest)\{[^}]+\}", str(t.get("output", "")), re.IGNORECASE)

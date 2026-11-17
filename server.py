@@ -68,6 +68,7 @@ class SolveRequest(BaseModel):
     model: Optional[str] = Field(None, description="Model override")
     session_id: Optional[str] = Field(None, description="Session ID for continuous multi-turn memory")
     max_turns: Optional[int] = Field(18, description="Maximum execution turns")
+    mode: Optional[str] = Field("flag", description="Operational mode: 'flag' for CTF flag extraction, 'bug' for security vulnerability audit")
 
 class RAGSearchRequest(BaseModel):
     query: str = Field(..., description="Keywords or problem text to search")
@@ -357,7 +358,7 @@ def solve_challenge_stream(req: SolveRequest):
                 agent.model = req.model
 
         t0 = time.time()
-        result = agent.run_with_trace(req.prompt, max_turns=req.max_turns or 18, session_id=req.session_id)
+        result = agent.run_with_trace(req.prompt, max_turns=req.max_turns or 18, session_id=req.session_id, mode=req.mode or "flag")
         elapsed = round(time.time() - t0, 2)
         result["elapsed_seconds"] = elapsed
 
@@ -393,7 +394,7 @@ def solve_challenge(req: SolveRequest):
             agent.model = req.model
 
     t0 = time.time()
-    result = agent.run_with_trace(req.prompt, max_turns=req.max_turns or 18, session_id=req.session_id)
+    result = agent.run_with_trace(req.prompt, max_turns=req.max_turns or 18, session_id=req.session_id, mode=req.mode or "flag")
     elapsed = round(time.time() - t0, 2)
     result["elapsed_seconds"] = elapsed
     result["solution"] = result.get("final_answer", "")

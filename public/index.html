@@ -165,6 +165,17 @@
           </div>
         </div>
 
+        <!-- OPERATIONAL GOAL MODE SELECTOR: CTF FLAG vs SECURITY BUG AUDIT -->
+        <div class="flex flex-wrap items-center gap-2 mb-3 p-1.5 bg-slate-950/90 rounded-xl border border-slate-800 w-fit">
+          <span class="text-xs text-slate-400 font-semibold pl-2">Objective:</span>
+          <button id="mode-flag-btn" onclick="setOperationalMode('flag')" class="px-4 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20">
+            <span>🚩</span> CTF Flag Solver
+          </button>
+          <button id="mode-bug-btn" onclick="setOperationalMode('bug')" class="px-4 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 bg-slate-900 text-slate-300 hover:text-white border border-slate-700">
+            <span>🛡️</span> Web Security & Bug Audit
+          </button>
+        </div>
+
         <!-- TARGET INPUT BAR -->
         <div class="space-y-3">
           <div class="relative flex flex-col sm:flex-row items-stretch gap-2.5">
@@ -178,7 +189,7 @@
             <button id="solve-btn" onclick="executeSolve()" 
                     class="px-7 py-3 bg-gradient-to-r from-cyan-500 via-blue-600 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 font-black text-sm rounded-xl transition shadow-xl shadow-cyan-500/25 flex items-center justify-center gap-2 whitespace-nowrap active:scale-[0.98]">
               <span id="solve-spinner" class="hidden animate-spin">🌀</span>
-              <span>⚡ Start Auto-Solve (Autopilot)</span>
+              <span id="solve-btn-text">⚡ Start Auto-Solve (Autopilot)</span>
             </button>
           </div>
 
@@ -264,6 +275,70 @@
             <button onclick="copyExtractedFlag()" class="px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-sm rounded-xl transition shadow-lg shadow-emerald-500/30 flex items-center gap-2">
               <span>📋</span> Copy Flag
             </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECURITY BUG AUDIT ADVISORY CARD (FOR BUG HUNTING / PENTEST MODE) -->
+      <div id="bug-advisory-card" class="hidden victory-glow bg-gradient-to-r from-amber-950/90 via-slate-900 to-rose-950/90 border-2 border-amber-500 rounded-2xl p-6">
+        <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+          <div class="space-y-1 text-center md:text-left">
+            <div class="flex items-center justify-center md:justify-start gap-2">
+              <span class="text-2xl">🛡️</span>
+              <span class="text-xs font-black uppercase tracking-wider text-amber-400 bg-amber-950/80 px-2.5 py-1 rounded border border-amber-700">
+                Vulnerability Assessment Verified
+              </span>
+              <span id="audit-time-badge" class="text-xs font-mono text-cyan-400">⏱️ 0.0s</span>
+            </div>
+            <div id="bug-display-text" class="text-xl sm:text-2xl font-black font-mono text-amber-300 py-1">
+              Confirmed Security Vulnerability Identified
+            </div>
+            <p class="text-xs text-slate-400">Target endpoints audited with specialized Python verification scripts and DevTools reverse engineering.</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <button onclick="copyExploitCode()" class="px-6 py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-sm rounded-xl transition shadow-lg shadow-amber-500/30 flex items-center gap-2">
+              <span>📋</span> Copy PoC / Report
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- DEVTOOLS RECON & FRONTEND CODE REVERSE ENGINEERING PANEL -->
+      <div id="devtools-recon-panel" class="hidden glass-card rounded-2xl p-4 border border-cyan-800/40">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <span class="text-base">🔬</span>
+            <span class="text-xs font-bold text-cyan-300 uppercase tracking-wider">DevTools Frontend Reverse Engineering & API Recon</span>
+          </div>
+          <span id="recon-summary-badge" class="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800">0 endpoints mapped</span>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs font-mono">
+          <!-- Discovered API Endpoints -->
+          <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800">
+            <div class="text-[11px] font-bold text-cyan-400 mb-1.5 flex items-center gap-1">
+              <span>🌐</span> Discovered Endpoints
+            </div>
+            <div id="recon-endpoints-list" class="space-y-1 text-[11px] text-slate-300 max-h-28 overflow-y-auto">
+              <span class="text-slate-600">None extracted yet</span>
+            </div>
+          </div>
+          <!-- Discovered Tokens / Secrets -->
+          <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800">
+            <div class="text-[11px] font-bold text-emerald-400 mb-1.5 flex items-center gap-1">
+              <span>🔑</span> Tokens / Hidden Secrets
+            </div>
+            <div id="recon-tokens-list" class="space-y-1 text-[11px] text-slate-300 max-h-28 overflow-y-auto">
+              <span class="text-slate-600">None extracted yet</span>
+            </div>
+          </div>
+          <!-- Console Logs & Comments -->
+          <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800">
+            <div class="text-[11px] font-bold text-violet-400 mb-1.5 flex items-center gap-1">
+              <span>💬</span> DevTools Console & Comments
+            </div>
+            <div id="recon-console-list" class="space-y-1 text-[11px] text-slate-300 max-h-28 overflow-y-auto">
+              <span class="text-slate-600">No console logs</span>
+            </div>
           </div>
         </div>
       </div>
@@ -480,6 +555,34 @@
   <script>
     let currentSessionId = 'sess_' + Math.random().toString(36).substring(2, 9);
     let lastExtractedFlag = '';
+    let currentOperationalMode = 'flag'; // 'flag' for CTF solver, 'bug' for security audit
+
+    function setOperationalMode(mode) {
+      currentOperationalMode = mode;
+      const flagBtn = document.getElementById('mode-flag-btn');
+      const bugBtn = document.getElementById('mode-bug-btn');
+      const solveBtnText = document.getElementById('solve-btn-text');
+
+      if (mode === 'bug') {
+        bugBtn.className = 'px-4 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20';
+        flagBtn.className = 'px-4 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 bg-slate-900 text-slate-300 hover:text-white border border-slate-700';
+        if (solveBtnText) solveBtnText.textContent = '🛡️ Launch Security Bug Audit (Pentest)';
+        document.getElementById('step-phase-1').querySelector('.text-xs').textContent = 'DevTools Recon & JS';
+        document.getElementById('step-phase-2').querySelector('.text-xs').textContent = 'Attack Surface Map';
+        document.getElementById('step-phase-3').querySelector('.text-xs').textContent = 'Multi-Vector Sandbox';
+        document.getElementById('step-phase-4').querySelector('.text-xs').textContent = 'PoC Verification';
+        document.getElementById('step-phase-5').querySelector('.text-xs').textContent = 'Security Advisory';
+      } else {
+        flagBtn.className = 'px-4 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20';
+        bugBtn.className = 'px-4 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 bg-slate-900 text-slate-300 hover:text-white border border-slate-700';
+        if (solveBtnText) solveBtnText.textContent = '⚡ Start Auto-Solve (Autopilot)';
+        document.getElementById('step-phase-1').querySelector('.text-xs').textContent = 'Reconnaissance';
+        document.getElementById('step-phase-2').querySelector('.text-xs').textContent = 'Vulnerability Analysis';
+        document.getElementById('step-phase-3').querySelector('.text-xs').textContent = 'Exploit Synthesis';
+        document.getElementById('step-phase-4').querySelector('.text-xs').textContent = 'Proof Verification';
+        document.getElementById('step-phase-5').querySelector('.text-xs').textContent = 'Flag Captured';
+      }
+    }
 
     function switchTab(tabId) {
       document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
@@ -508,6 +611,10 @@
       document.getElementById('session-badge').textContent = currentSessionId;
       document.getElementById('trace-container').innerHTML = '<div class="text-xs text-slate-500 p-8 text-center font-mono">Fresh session initialized.</div>';
       document.getElementById('flag-victory-card').classList.add('hidden');
+      const bugCard = document.getElementById('bug-advisory-card');
+      if (bugCard) bugCard.classList.add('hidden');
+      const reconPanel = document.getElementById('devtools-recon-panel');
+      if (reconPanel) reconPanel.classList.add('hidden');
       document.getElementById('exploit-code-editor').value = '';
       resetFsmSteps();
     }
@@ -615,8 +722,10 @@
       resetFsmSteps();
       updateFsmStep(1, 'active');
 
-      traceContainer.innerHTML = '<div class="text-xs text-cyan-400 animate-pulse p-4 text-center font-mono">🤖 Autopilot dispatched. Initiating Phase 1 (Reconnaissance)...</div>';
+      traceContainer.innerHTML = `<div class="text-xs text-cyan-400 animate-pulse p-4 text-center font-mono">🤖 Autopilot dispatched [Mode: ${currentOperationalMode.toUpperCase()}]. Initiating Phase 1 (Reconnaissance & DevTools Reverse)...</div>`;
       flagCard.classList.add('hidden');
+      const bugCard = document.getElementById('bug-advisory-card');
+      if (bugCard) bugCard.classList.add('hidden');
 
       const startTime = performance.now();
       let liveTraces = [];
@@ -628,7 +737,8 @@
           body: JSON.stringify({
             prompt: prompt,
             provider: document.getElementById('provider-select').value,
-            session_id: currentSessionId
+            session_id: currentSessionId,
+            mode: currentOperationalMode
           })
         });
 
@@ -666,6 +776,34 @@
                     document.getElementById('trace-count').textContent = `${liveTraces.length} tool calls`;
                     renderTraceList(liveTraces);
 
+                    // Dynamic DevTools Recon Extraction
+                    try {
+                      const outData = typeof ev.item.output === 'object' ? ev.item.output : JSON.parse(ev.item.output);
+                      if (outData && (outData.discovered_endpoints || outData.discovered_tokens_secrets)) {
+                        const reconPanel = document.getElementById('devtools-recon-panel');
+                        if (reconPanel) reconPanel.classList.remove('hidden');
+
+                        const epList = document.getElementById('recon-endpoints-list');
+                        if (epList && outData.discovered_endpoints && outData.discovered_endpoints.length) {
+                          epList.innerHTML = outData.discovered_endpoints.map(ep => `<div class="px-2 py-0.5 rounded bg-cyan-950/70 border border-cyan-800 text-cyan-300 truncate">${ep}</div>`).join('');
+                          document.getElementById('recon-summary-badge').textContent = `${outData.discovered_endpoints.length} endpoints mapped`;
+                        }
+
+                        const tokList = document.getElementById('recon-tokens-list');
+                        if (tokList && outData.discovered_tokens_secrets && outData.discovered_tokens_secrets.length) {
+                          tokList.innerHTML = outData.discovered_tokens_secrets.map(t => `<div class="px-2 py-0.5 rounded bg-emerald-950/70 border border-emerald-800 text-emerald-300 truncate">${t}</div>`).join('');
+                        }
+
+                        const conList = document.getElementById('recon-console-list');
+                        if (conList) {
+                          const allLogs = [...(outData.devtools_console || []), ...(outData.html_comments || []).map(c => `[HTML Comment] ${c}`)];
+                          if (allLogs.length) {
+                            conList.innerHTML = allLogs.map(m => `<div class="px-2 py-0.5 rounded bg-violet-950/70 border border-violet-800 text-violet-300 truncate">${m}</div>`).join('');
+                          }
+                        }
+                      }
+                    } catch (e) {}
+
                     // Dynamic FSM stepper updates based on tool names
                     const tName = ev.item.tool || '';
                     if (tName.includes('playwright') || tName.includes('probe') || tName.includes('fuzzer')) {
@@ -688,30 +826,41 @@
                     }
                   } else if (ev.type === 'final_answer') {
                     const elapsed = ((performance.now() - startTime) / 1000).toFixed(2);
-                    document.getElementById('solve-time-badge').textContent = `⏱️ ${elapsed}s`;
-
-                    // Extract Flag from final answer or trace outputs
                     const ans = ev.final_answer || '';
-                    let match = ans.match(/(?:flag|CTF|HQX|hackquest)\{[^}]+\}/i);
-                    if (!match) {
-                      const allTraces = (ev.trace && ev.trace.length) ? ev.trace : liveTraces;
-                      for (const t of allTraces) {
-                        const outStr = typeof t.output === 'object' ? JSON.stringify(t.output) : String(t.output || '');
-                        const m = outStr.match(/(?:flag|CTF|HQX|hackquest)\{[^}]+\}/i);
-                        if (m) { match = m; break; }
-                      }
-                    }
 
-                    if (match) {
-                      lastExtractedFlag = match[0];
-                      flagText.textContent = lastExtractedFlag;
-                      flagCard.classList.remove('hidden');
+                    if (currentOperationalMode === 'bug') {
+                      // Security Bug Audit Mode
+                      const bugCard = document.getElementById('bug-advisory-card');
+                      if (bugCard) bugCard.classList.remove('hidden');
+                      const auditBadge = document.getElementById('audit-time-badge');
+                      if (auditBadge) auditBadge.textContent = `⏱️ ${elapsed}s`;
                       updateFsmStep(4, 'done');
                       updateFsmStep(5, 'done');
-                      document.getElementById('fsm-status-badge').textContent = '🏆 Flag Captured!';
+                      document.getElementById('fsm-status-badge').textContent = '🛡️ Vulnerability Audit Completed!';
                     } else {
-                      updateFsmStep(4, 'done');
-                      document.getElementById('fsm-status-badge').textContent = 'Completed';
+                      // CTF Flag Solver Mode
+                      document.getElementById('solve-time-badge').textContent = `⏱️ ${elapsed}s`;
+                      let match = ans.match(/(?:flag|CTF|HQX|hackquest)\{[^}]+\}/i);
+                      if (!match) {
+                        const allTraces = (ev.trace && ev.trace.length) ? ev.trace : liveTraces;
+                        for (const t of allTraces) {
+                          const outStr = typeof t.output === 'object' ? JSON.stringify(t.output) : String(t.output || '');
+                          const m = outStr.match(/(?:flag|CTF|HQX|hackquest)\{[^}]+\}/i);
+                          if (m) { match = m; break; }
+                        }
+                      }
+
+                      if (match) {
+                        lastExtractedFlag = match[0];
+                        flagText.textContent = lastExtractedFlag;
+                        flagCard.classList.remove('hidden');
+                        updateFsmStep(4, 'done');
+                        updateFsmStep(5, 'done');
+                        document.getElementById('fsm-status-badge').textContent = '🏆 Flag Captured!';
+                      } else {
+                        updateFsmStep(4, 'done');
+                        document.getElementById('fsm-status-badge').textContent = 'Completed';
+                      }
                     }
 
                     // Extract python code block from final answer or from execute_python_sandbox tool calls
