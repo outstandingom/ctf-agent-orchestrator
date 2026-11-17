@@ -64,7 +64,7 @@ except Exception:
 # Request Models
 class SolveRequest(BaseModel):
     prompt: str = Field(..., description="CTF challenge description or problem prompt")
-    provider: Optional[str] = Field("groq", description="LLM provider: groq or anthropic")
+    provider: Optional[str] = Field("deepseek", description="LLM provider: deepseek, groq, or anthropic")
     model: Optional[str] = Field(None, description="Model override")
     session_id: Optional[str] = Field(None, description="Session ID for continuous multi-turn memory")
     max_turns: Optional[int] = Field(18, description="Maximum execution turns")
@@ -351,11 +351,7 @@ def solve_challenge_stream(req: SolveRequest):
             except Exception:
                 pass
         
-        agent = CTFOrchestratorAgent()
-        if req.provider:
-            agent.provider = req.provider.lower()
-            if req.provider.lower() == "groq" and req.model:
-                agent.model = req.model
+        agent = CTFOrchestratorAgent(provider=req.provider, model=req.model)
 
         t0 = time.time()
         result = agent.run_with_trace(req.prompt, max_turns=req.max_turns or 18, session_id=req.session_id, mode=req.mode or "flag")
@@ -387,11 +383,7 @@ def solve_challenge(req: SolveRequest):
     if not req.prompt.strip():
         raise HTTPException(status_code=400, detail="Challenge prompt is required.")
 
-    agent = CTFOrchestratorAgent()
-    if req.provider:
-        agent.provider = req.provider.lower()
-        if req.provider.lower() == "groq" and req.model:
-            agent.model = req.model
+    agent = CTFOrchestratorAgent(provider=req.provider, model=req.model)
 
     t0 = time.time()
     result = agent.run_with_trace(req.prompt, max_turns=req.max_turns or 18, session_id=req.session_id, mode=req.mode or "flag")

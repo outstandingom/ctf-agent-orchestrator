@@ -22,9 +22,12 @@ env_path = os.path.join(current_dir, ".env")
 load_dotenv(env_path)
 load_dotenv()
 
-LLM_PROVIDER = os.getenv("LLM_PROVIDER", "groq").lower().strip()
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "deepseek").lower().strip()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 GROQ_MODEL = os.getenv("GROQ_MODEL", "qwen/qwen3.8-27b").strip()
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", os.getenv("OPENROUTER_API_KEY", "")).strip()
+DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek/deepseek-chat").strip()
+DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://openrouter.ai/api/v1").strip()
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "").strip()
 CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-3-5-sonnet-20241022").strip()
 
@@ -3273,11 +3276,24 @@ class CTFAgentPhase:
     PHASE_5_SYNC = "Phase 5: DNA Graph Persistence"
 
 class CTFOrchestratorAgent:
-    def __init__(self):
-        self.provider = LLM_PROVIDER
+    def __init__(self, provider: str = None, model: str = None):
+        self.provider = (provider or LLM_PROVIDER).lower().strip()
         self.system_prompt = self.get_system_prompt("flag")
+        self.setup_client(self.provider, model)
 
-        if self.provider == "groq":
+    def setup_client(self, provider: str, model: str = None):
+        self.provider = (provider or LLM_PROVIDER).lower().strip()
+        if self.provider in ["deepseek", "openrouter"]:
+            from openai import OpenAI
+            key = DEEPSEEK_API_KEY or os.getenv("OPENROUTER_API_KEY") or os.getenv("DEEPSEEK_API_KEY", "")
+            if not key:
+                raise ValueError("DEEPSEEK_API_KEY / OpenRouter key is missing in .env")
+            self.client = OpenAI(
+                base_url=DEEPSEEK_BASE_URL,
+                api_key=key
+            )
+            self.model = model or DEEPSEEK_MODEL or "deepseek/deepseek-chat"
+        elif self.provider == "groq":
             from openai import OpenAI
             if not GROQ_API_KEY:
                 raise ValueError("GROQ_API_KEY is missing in .env")
@@ -3285,13 +3301,13 @@ class CTFOrchestratorAgent:
                 base_url="https://api.groq.com/openai/v1",
                 api_key=GROQ_API_KEY
             )
-            self.model = GROQ_MODEL
+            self.model = model or GROQ_MODEL or "qwen/qwen3.8-27b"
         else:
             import anthropic
             if not ANTHROPIC_API_KEY:
                 raise ValueError("ANTHROPIC_API_KEY is missing in .env")
             self.client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-            self.model = CLAUDE_MODEL
+            self.model = model or CLAUDE_MODEL or "claude-3-5-sonnet-20241022"
 
     def get_system_prompt(self, mode: str = "flag") -> str:
         if mode == "bug":
@@ -3353,8 +3369,8 @@ class CTFOrchestratorAgent:
 
         t0 = time.time()
         trace = []
-        if self.provider == "groq":
-            final_ans = self._run_groq_trace(user_prompt, max_turns, trace, sess_id, mode=mode)
+        if self.provider in ["groq", "deepseek", "openrouter"]:
+            final_ans = self._run_openai_compatible_trace(user_prompt, max_turns, trace, sess_id, mode=mode)
         else:
             final_ans = self._run_anthropic_trace(user_prompt, max_turns, trace, sess_id, mode=mode)
 
@@ -3388,6 +3404,9 @@ class CTFOrchestratorAgent:
         }
 
     def _run_groq_trace(self, user_prompt: str, max_turns: int, trace: list, session_id: str, mode: str = "flag") -> str:
+        return self._run_openai_compatible_trace(user_prompt, max_turns, trace, session_id, mode=mode)
+
+    def _run_openai_compatible_trace(self, user_prompt: str, max_turns: int, trace: list, session_id: str, mode: str = "flag") -> str:
         # Load or initialize conversation history
         messages = get_session_history(session_id)
         system_prompt = self.get_system_prompt(mode)
@@ -3396,7 +3415,10 @@ class CTFOrchestratorAgent:
 
         messages.append({"role": "user", "content": user_prompt})
 
-        fallback_models = [self.model, "openai/gpt-oss-120b", "openai/gpt-oss-20b"]
+        if self.provider in ["deepseek", "openrouter"]:
+            fallback_models = [self.model, "deepseek/deepseek-chat"]
+        else:
+            fallback_models = [self.model, "openai/gpt-oss-120b", "openai/gpt-oss-20b"]
 
         for turn in range(max_turns):
             response = None
@@ -3471,7 +3493,7 @@ class CTFOrchestratorAgent:
                     break
 
             if response is None:
-                return f"Agent paused: Groq rate limit reached across models ({last_err}). Please wait 15 seconds."
+                return f"Agent paused: {self.provider.upper()} rate limit or API error reached across models ({last_err}). Please wait 15 seconds."
 
             msg = response.choices[0].message
             messages.append(msg)
