@@ -3677,6 +3677,7 @@ class CTFOrchestratorAgent:
                 "\nCRITICAL DIRECTIVE:\n"
                 "- Do NOT search for a CTF flag. This is a real-world web application vulnerability assessment.\n"
                 "- Write and execute Python verification scripts using 'execute_python_sandbox' (or 'run_python_code') to test endpoints and verify bugs.\n"
+                "- PONYTAIL TOKEN EFFICIENCY PRINCIPLE: The best code is the code never written. Write the smallest, most direct Python exploit that proves the vulnerability. Avoid unnecessary wrappers, bloated try-excepts, and verbose boilerplate.\n"
                 "- Your final report MUST include: [Vulnerability Name], [CWE ID], [Severity: Critical/High/Medium/Low], [Vulnerable Endpoint & Parameter], [Verified Impact / PoC], and [Remediation Diff].\n"
                 "\nTOOL DIRECTORY (32 Specialized Engines — Integrated with Strix & REA):\n"
                 "- Strix Planning & Coverage: strix_mission_todo_planner, strix_attack_surface_coverage, strix_http_proxy_repeater\n"
@@ -3703,6 +3704,7 @@ class CTFOrchestratorAgent:
                 "\nCRITICAL DIRECTIVE ON EXECUTING EXPLOITS:\n"
                 "- You MUST NOT stop after describing the target. You MUST write and execute an exploit script using 'execute_python_sandbox' (or 'run_python_code') to attack the endpoints, solve multi-stage puzzles, and capture the flag.\n"
                 "- If attacking a multi-stage challenge, write a complete Python script in execute_python_sandbox that requests each endpoint, passes tokens/headers, and prints the final flag.\n"
+                "- PONYTAIL TOKEN EFFICIENCY PRINCIPLE: Write the smallest, most direct Python exploit that solves the puzzle and captures the flag. Concise 10-line scripts beat 100-line boilerplates.\n"
                 "- ALWAYS output the captured flag in the format: HQX{...}, flag{...}, or CTF{...}.\n"
                 "\nTOOL DIRECTORY (32 Specialized Engines — Integrated with Strix & REA):\n"
                 "- Strix Planning & Coverage: strix_mission_todo_planner, strix_attack_surface_coverage, strix_http_proxy_repeater\n"
@@ -4098,7 +4100,12 @@ def generate_mission_report(prompt: str, final_answer: str, trace: list, elapsed
     md.append(f"**Operational Mode:** `{'SECURITY BUG AUDIT & PENTEST' if mode == 'bug' else 'CTF FLAG SOLVER'}`  ")
     md.append(f"**LLM Engine:** `{provider.upper()} ({model})`  ")
     md.append(f"**Total Turn Count:** `{len(trace)} tools dispatched`  ")
-    md.append(f"**Execution Time:** `{elapsed_seconds}s`  \n")
+    md.append(f"**Execution Time:** `{elapsed_seconds}s`  ")
+    raw_schema_tokens = len(trace) * len(OPENAI_TOOLS) * 350
+    ponytail_tokens = len(trace) * 5 * 350
+    saved_tokens = max(0, raw_schema_tokens - ponytail_tokens)
+    savings_pct = round((saved_tokens / raw_schema_tokens * 100), 1) if raw_schema_tokens > 0 else 0
+    md.append(f"**Ponytail Token Efficiency:** `~{saved_tokens:,} tokens saved (-{savings_pct}% context payload reduction)`  \n")
     md.append("---\n")
 
     md.append("## 📌 Executive Summary")
