@@ -1134,15 +1134,27 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
         except Exception as e:
             print(f"[RAG fallback] HF Vector Space unavailable ({e}), trying DNA Graph...")
 
-        # Secondary: DNA Knowledge Graph
+        # Secondary: DNA Knowledge Graph (v2.0 Partitioned Essence & Sentence Synthesis)
         try:
+            concept_key = query.lower().replace(" ", "_").strip()
             hf_res = requests.post(
                 f"{HF_URL}/search/essence",
-                json={"text": query, "top_k": 3},
+                json={"concept": concept_key, "top_k": 3},
                 timeout=8
             )
             if hf_res.status_code == 200:
-                return hf_res.text
+                data = hf_res.json()
+                results = data.get("results", [])
+                if results:
+                    sentences = []
+                    for r in results[:2]:
+                        try:
+                            s_res = requests.post(f"{HF_URL}/sentence", json={"concept": r.get("name", "")}, timeout=3)
+                            if s_res.status_code == 200:
+                                sentences.append(s_res.json().get("sentence", ""))
+                        except Exception:
+                            pass
+                    return json.dumps({"dna_graph_results": results, "synthesized_context": sentences})
         except Exception:
             pass
 
@@ -1159,7 +1171,7 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
         except Exception as err:
             return json.dumps({"notice": f"Knowledge base search completed. Fallback to SLM internal CTF memory."})
 
-    # 2. DYNAMIC DNA ATTACK TREE SYNC
+    # 2. DYNAMIC DNA ATTACK TREE SYNC (v2.0 Weighted & Colored Relationships)
     elif tool_name == "sync_dna_attack_tree":
         c_a = tool_input.get("concept_a", "").strip()
         c_b = tool_input.get("concept_b", "").strip()
@@ -1167,17 +1179,36 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
         if not c_a or not c_b:
             return json.dumps({"error": "Both concept_a and concept_b are required"})
         try:
+            color_map = {
+                "exploits": "CAUSES",
+                "causes": "CAUSES",
+                "leads_to": "CAUSES",
+                "is_a": "IS_A",
+                "has": "HAS",
+                "part_of": "PART_OF",
+                "subdomain": "PART_OF",
+                "condition": "CONDITION"
+            }
+            chosen_color = color_map.get(rel.lower(), "RELATED")
             payload = {
                 "concept_a": c_a,
                 "concept_b": c_b,
-                "relationship_type": rel,
-                "weight": 1.0
+                "weight": 1.0,
+                "color": chosen_color
             }
             res = requests.post(f"{HF_URL}/relationships/add", json=payload, timeout=6)
+            synthesized = ""
+            try:
+                s_res = requests.post(f"{HF_URL}/sentence", json={"concept": c_a.lower()}, timeout=3)
+                if s_res.status_code == 200:
+                    synthesized = s_res.json().get("sentence", "")
+            except Exception:
+                pass
             return json.dumps({
                 "status": "synced",
                 "dna_response": res.json() if res.status_code == 200 else res.text,
-                "tree_edge": f"{c_a} --[{rel}]--> {c_b}"
+                "tree_edge": f"{c_a} --[{chosen_color}]--> {c_b}",
+                "synthesized_narrative": synthesized
             })
         except Exception as e:
             return json.dumps({"status": "cached_locally", "error": str(e)})
