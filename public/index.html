@@ -980,6 +980,97 @@
       `).reverse().join('');
     }
 
+    async function executeRAGSearch() {
+      const query = document.getElementById('rag-search-input').value.trim();
+      const domain = document.getElementById('rag-domain-select').value;
+      const container = document.getElementById('rag-results-container');
+
+      if (!query) {
+        alert('Please enter a query.');
+        return;
+      }
+
+      container.innerHTML = '<div class="p-6 text-center text-xs text-cyan-400 animate-pulse">Querying Hugging Face ZeroGPU Vector Space...</div>';
+
+      try {
+        const res = await fetch('/api/rag/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query, domain })
+        });
+        const data = await res.json();
+        container.innerHTML = `
+          <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 text-sm prose prose-invert max-w-none">
+            ${marked.parse(data.results || 'No matching techniques found.')}
+          </div>
+        `;
+        Prism.highlightAllUnder(container);
+      } catch (err) {
+        container.innerHTML = `<div class="p-4 text-xs text-rose-400 font-mono">RAG search failed: ${err.message}</div>`;
+      }
+    }
+
+    async function executeForensicScan() {
+      const filePath = document.getElementById('forensics-file-path').value.trim();
+      const text = document.getElementById('forensics-text-input').value.trim();
+      const out = document.getElementById('forensics-output');
+
+      out.textContent = 'Running ForensicEngine extractors & flag regex analysis...';
+
+      try {
+        const res = await fetch('/api/forensics/scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ file_path: filePath, text })
+        });
+        const data = await res.json();
+        out.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        out.textContent = `Error: ${err.message}`;
+      }
+    }
+
+    async function fetchGitHubRepos() {
+      const container = document.getElementById('github-repos-container');
+      container.innerHTML = '<div class="col-span-full text-center text-xs text-cyan-400 animate-pulse py-8">Fetching repositories from backend API...</div>';
+
+      try {
+        const res = await fetch('/api/github/repos');
+        if (!res.ok) throw new Error(`Repository API returned HTTP ${res.status}`);
+        const data = await res.json();
+        let repos = Array.isArray(data) ? data : [];
+
+        if (data.content && Array.isArray(data.content)) {
+          try {
+            repos = JSON.parse(data.content[0].text);
+          } catch (e) {
+            repos = [];
+          }
+        }
+
+        if (repos.length === 0) {
+          container.innerHTML = '<div class="col-span-full text-center text-xs text-slate-400 py-8">No repositories returned.</div>';
+          return;
+        }
+
+        container.innerHTML = repos.map(r => `
+          <div class="bg-slate-950 border border-slate-800 hover:border-cyan-800/80 rounded-xl p-4 transition space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-sm text-white truncate">${r.name}</span>
+              <span class="text-[10px] px-2 py-0.5 rounded-full ${r.private ? 'bg-amber-950 text-amber-400' : 'bg-emerald-950 text-emerald-400'}">${r.private ? 'Private' : 'Public'}</span>
+            </div>
+            <p class="text-xs text-slate-400 truncate">${r.description || 'No description'}</p>
+            <div class="flex items-center justify-between text-[11px] text-slate-500 pt-2 border-t border-slate-900 font-mono">
+              <span>⭐ ${r.stargazers_count || 0}</span>
+              <a href="${r.html_url}" target="_blank" class="text-cyan-400 hover:underline">View on GitHub ↗</a>
+            </div>
+          </div>
+        `).join('');
+      } catch (err) {
+        container.innerHTML = `<div class="col-span-full text-center text-xs text-rose-400 py-8">Error: ${err.message}</div>`;
+      }
+    }
+
     function copyExtractedFlag() {
       if (lastExtractedFlag) {
         navigator.clipboard.writeText(lastExtractedFlag);

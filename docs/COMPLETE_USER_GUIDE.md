@@ -134,7 +134,7 @@ HF_KNOWLEDGE_URL=https://outstandingom-knowledge-graph-env.hf.space
 
 # ─── Render Lifetime GitHub MCP Server Gateway ────────────────────────
 MCP_SERVER_URL=https://mcp-server-2sl7.onrender.com
-MCP_API_KEY=outstandingom_mcp_2026hjfbechjbdhjjfbnkqjkj
+MCP_API_KEY=your_mcp_gateway_key_here
 
 # ─── Supabase Session Persistence ─────────────────────────────────────
 SUPABASE_URL=https://vtlmgubzcktztkuymtir.supabase.co
@@ -225,7 +225,7 @@ To eliminate Groq free-tier rate limits (7,000 Input Tokens Per Minute):
 4. Click **🤖 Solve** on any challenge: the agent ingests details, queries RAG, solves in sandbox, and auto-submits the flag!
 
 ### Playbook 2: Google CTF & Proprietary Platforms
-1. Join your team in browser: `https://capturetheflag.withgoogle.com/team/loki` (Access Key: `-P5G9PyOgiLko9eg5WzD`).
+1. Join your team in browser: `https://capturetheflag.withgoogle.com/team/loki` (use your own authorized team access key; do not store it in source control).
 2. **For Web Challenges**: Use **🚀 Dynamic Fuzzing & Z3 SMT** tab to run differential fuzzing or client-side timer bypass (`localStorage.setItem('timer_completed', 'true'); fetch('/flag')`).
 3. **For PRNG / Crypto Challenges**: Paste description into **🤖 Agent Mission Control** to retrieve the PRNG time-seed pattern and crack the XOR stream.
 4. **For Netcat Socket Targets**: Connect via **Interactive Socket Probe** on `http://localhost:8080`.

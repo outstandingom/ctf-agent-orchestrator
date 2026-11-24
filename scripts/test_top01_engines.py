@@ -8,7 +8,7 @@ Tests:
   5. pwn_crash_triage       - returns structure even without WSL binary
 """
 import sys, os, json
-sys.path.insert(0, r"c:\Users\SGI\Downloads\ctf-agent-orchestrator")
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from agent import execute_tool
 
 PASS = 0
@@ -92,7 +92,22 @@ print(f"\n[3] Fermat factoring (close primes): N={n3}")
 r3 = execute_tool("advanced_crypto_solver", {"attack": "weak_prime", "n": str(n3), "e": str(e3), "c": str(c3)})
 check("Fermat factors N with close p and q", r3, must_contain=["factored"])
 
-# ---- TEST 4: CTFd speed listener graceful error on bad URL ----
+# ---- TEST 4: small-e RSA integer cube-root precision ----
+# Use a plaintext larger than IEEE-754's exact-integer range. Floating-point
+# cube roots can lose precision here even though m^3 < N.
+print(f"\\n[4] Small-e RSA exact cube root")
+flag_bytes = b"HQX{integer_cube_root_precision}"
+m4 = int.from_bytes(flag_bytes, "big")
+n4 = 1 << 600
+e4 = 3
+c4 = m4 ** 3
+r4_small_e = execute_tool("advanced_crypto_solver", {
+    "attack": "small_e", "n": str(n4), "e": str(e4), "c": str(c4)
+})
+check("Small-e exact cube root recovers large plaintext", r4_small_e,
+      must_contain=[str(m4), "recovered"])
+
+# ---- TEST 5: CTFd speed listener graceful error on bad URL ----
 print(f"\n[4] CTFd speed listener: bad URL")
 r4 = execute_tool("ctfd_speed_listener", {
     "ctfd_url": "http://127.0.0.1:1",  # nothing listening here
@@ -112,7 +127,7 @@ except Exception as ex:
     print(f"  ❌ FAIL [CTFd listener JSON parse]: {ex}")
     FAIL += 1
 
-# ---- TEST 5: PWN crash triage structure test ----
+# ---- TEST 6: PWN crash triage structure test ----
 print(f"\n[5] PWN crash triage: structure check on nonexistent binary")
 r5 = execute_tool("pwn_crash_triage", {
     "binary_path": r"c:\nonexistent\fakebinary",

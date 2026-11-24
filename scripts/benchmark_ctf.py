@@ -12,7 +12,7 @@ on a 5th bonus challenge to test end-to-end solve quality.
 """
 
 import sys, os, json, time, re, struct, zlib, math, tempfile
-sys.path.insert(0, r"c:\Users\SGI\Downloads\ctf-agent-orchestrator")
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from agent import execute_tool
 
 RESULTS = []
@@ -294,7 +294,7 @@ print(f"  MISSED    : {[r['name'] for r in RESULTS if not r['correct']]}")
 print(f"{'='*65}")
 
 # Save results JSON
-out = r"c:\Users\SGI\Downloads\ctf-agent-orchestrator\scripts\benchmark_results.json"
+out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "benchmark_results.json")
 with open(out, "w") as f:
     json.dump({"accuracy_pct": pct, "correct": correct, "total": total,
                "avg_solve_time_s": avg_time, "results": RESULTS}, f, indent=2)
