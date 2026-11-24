@@ -970,37 +970,46 @@
             </span>
             <span class="text-[10px] text-slate-500">Turn ${t.turn || idx+1}</span>
           </div>
-<<<<<<< HEAD
+          <div class="text-[11px] text-slate-400 bg-black/60 p-2 rounded truncate">
+            ${JSON.stringify(t.args || {})}
+          </div>
+          <div class="text-[11px] text-emerald-400 bg-black/60 p-2 rounded max-h-24 overflow-y-auto">
+            ${(typeof t.output === 'string' ? t.output : JSON.stringify(t.output)) || 'Output received'}
+          </div>
+        </div>
+      `).reverse().join('');
+    }
+
+    async function executeRAGSearch() {
+      const query = document.getElementById('rag-search-input').value.trim();
+      const domain = document.getElementById('rag-domain-select').value;
+      const container = document.getElementById('rag-results-container');
+
+      if (!query) {
+        alert('Please enter a query.');
+        return;
+      }
+
+      container.innerHTML = '<div class="p-6 text-center text-xs text-cyan-400 animate-pulse">Querying Hugging Face ZeroGPU Vector Space...</div>';
+
+      try {
+        const res = await fetch('/api/rag/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query, domain })
+        });
+        const data = await res.json();
+        container.innerHTML = `
+          <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 text-sm prose prose-invert max-w-none">
+            ${marked.parse(data.results || 'No matching techniques found.')}
+          </div>
         `;
         Prism.highlightAllUnder(container);
       } catch (err) {
-        // Fallback to direct Space query
-        try {
-          const directRes = await fetch(SERVICE_URLS.hf + '/gradio_api/call/query', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ data: [query, domain, 3] })
-          });
-          const callData = await directRes.json();
-          if (callData.event_id) {
-            const evRes = await fetch(SERVICE_URLS.hf + '/gradio_api/call/query/' + callData.event_id);
-            const text = await evRes.text();
-            for (const line of text.split('\n')) {
-              if (line.startsWith('data:')) {
-                const parsed = JSON.parse(line.substring(5).trim());
-                container.innerHTML = `<div class="bg-slate-950 border border-slate-800 rounded-xl p-5 text-sm prose prose-invert max-w-none">${marked.parse(parsed[0])}</div>`;
-                Prism.highlightAllUnder(container);
-                return;
-              }
-            }
-          }
-        } catch (e2) {
-          container.innerHTML = `<div class="p-4 text-xs text-rose-400 font-mono">RAG search failed: ${err.message}</div>`;
-        }
+        container.innerHTML = `<div class="p-4 text-xs text-rose-400 font-mono">RAG search failed: ${err.message}</div>`;
       }
     }
 
-    // Forensics Scan
     async function executeForensicScan() {
       const filePath = document.getElementById('forensics-file-path').value.trim();
       const text = document.getElementById('forensics-text-input').value.trim();
@@ -1021,38 +1030,21 @@
       }
     }
 
-    // Fetch GitHub Repos
     async function fetchGitHubRepos() {
       const container = document.getElementById('github-repos-container');
-      container.innerHTML = '<div class="col-span-full text-center text-xs text-cyan-400 animate-pulse py-8">Fetching repositories from Render MCP Gateway...</div>';
+      container.innerHTML = '<div class="col-span-full text-center text-xs text-cyan-400 animate-pulse py-8">Fetching repositories from backend API...</div>';
 
       try {
-        let data = null;
-        try {
-          const res = await fetch('/api/github/repos');
-          if (res.ok) {
-            const ct = res.headers.get('content-type') || '';
-            if (ct.includes('application/json')) {
-              data = await res.json();
-            }
-          }
-        } catch (e) {}
+        const res = await fetch('/api/github/repos');
+        if (!res.ok) throw new Error(`Repository API returned HTTP ${res.status}`);
+        const data = await res.json();
+        let repos = Array.isArray(data) ? data : [];
 
-        // Never call the MCP gateway directly from browser code: credentials belong on the backend.
-        if (!data) {
-          throw new Error('Repository API did not return JSON. Check the backend and its MCP configuration.');
-        }
-
-        let repos = [];
-        if (data) {
-          if (Array.isArray(data)) {
-            repos = data;
-          } else if (data.content && Array.isArray(data.content)) {
-            try {
-              repos = JSON.parse(data.content[0].text);
-            } catch(e) {
-              repos = [];
-            }
+        if (data.content && Array.isArray(data.content)) {
+          try {
+            repos = JSON.parse(data.content[0].text);
+          } catch (e) {
+            repos = [];
           }
         }
 
@@ -1072,16 +1064,11 @@
               <span>⭐ ${r.stargazers_count || 0}</span>
               <a href="${r.html_url}" target="_blank" class="text-cyan-400 hover:underline">View on GitHub ↗</a>
             </div>
-=======
-          <div class="text-[11px] text-slate-400 bg-black/60 p-2 rounded truncate">
-            ${JSON.stringify(t.args || {})}
->>>>>>> origin/main
           </div>
-          <div class="text-[11px] text-emerald-400 bg-black/60 p-2 rounded max-h-24 overflow-y-auto">
-            ${(typeof t.output === 'string' ? t.output : JSON.stringify(t.output)) || 'Output received'}
-          </div>
-        </div>
-      `).reverse().join('');
+        `).join('');
+      } catch (err) {
+        container.innerHTML = `<div class="col-span-full text-center text-xs text-rose-400 py-8">Error: ${err.message}</div>`;
+      }
     }
 
     function copyExtractedFlag() {

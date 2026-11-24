@@ -35,7 +35,6 @@ chmod +x start.sh
 
 ---
 
-<<<<<<< HEAD
 ## 🔐 Security Notes (Read Before Running)
 
 - Treat this project as a **local research prototype**, not a production or internet-facing service.
@@ -45,7 +44,7 @@ chmod +x start.sh
 - Web fuzzing, socket probing, and CTFd operations can send traffic or submit flags. Use only targets and actions explicitly authorized by their owners and the event rules.
 - The CORS allowlist is empty by default. If a separately hosted frontend is needed, set `CORS_ORIGINS` to exact trusted origins, comma-separated. CORS is not authentication.
 - Before production use, add API authentication/authorization, per-route permissions, SSRF and target allowlists, upload size/type limits, process/container isolation, resource quotas, audit logging, and automated security tests.
-=======
+
 ## 🏛️ System Architecture & Ecosystem Breakdown
 
 ### Repository & Component Roles
@@ -61,7 +60,6 @@ chmod +x start.sh
 | **Supabase DB (`solves`)** | Telemetry & Solve Ledger | Public scoreboard verification, RLS-secured execution telemetry, flag tracking, and benchmark audit trails |
 
 ---
->>>>>>> origin/main
 
 ## ⚙️ Manual Setup & Environment Configuration
 
