@@ -2,7 +2,7 @@
   "accuracy_pct": 100.0,
   "correct": 5,
   "total": 5,
-  "avg_solve_time_s": 2.2168,
+  "avg_solve_time_s": 0.4716,
   "results": [
     {
       "tier": "TIER-1",
@@ -11,7 +11,7 @@
       "expected": "HQX{r3p3ating_k3y_xor_c4ught}",
       "found": "HQX{r3p3ating_k3y_xor_c4ught}",
       "method": "execute_python_sandbox",
-      "elapsed_s": 0.16
+      "elapsed_s": 0.064
     },
     {
       "tier": "TIER-2",
@@ -20,7 +20,7 @@
       "expected": "HQX{w1n}",
       "found": "HQX{w1n}",
       "method": "advanced_crypto_solver(wiener)",
-      "elapsed_s": 0.009
+      "elapsed_s": 0.006
     },
     {
       "tier": "TIER-3",
@@ -29,7 +29,7 @@
       "expected": "HQX{pcap_dns_exfil_caught}",
       "found": "HQX{pcap_dns_exfil_caught}",
       "method": "run_forensics_inspection + search_flag_patterns",
-      "elapsed_s": 10.729
+      "elapsed_s": 2.213
     },
     {
       "tier": "TIER-4",
@@ -38,7 +38,7 @@
       "expected": "HQX{lsb_stego_h1dd3n}",
       "found": "HQX{lsb_stego_h1dd3n}",
       "method": "run_forensics_inspection + search_flag_patterns",
-      "elapsed_s": 0.186
+      "elapsed_s": 0.075
     },
     {
       "tier": "BONUS-5",

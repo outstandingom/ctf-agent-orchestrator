@@ -1,0 +1,42 @@
+services:
+  - type: web
+    name: ctf-agent-orchestrator
+    env: docker
+    plan: starter
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: PORT
+        value: 8080
+      - key: HOST
+        value: 0.0.0.0
+      - key: LLM_PROVIDER
+        value: deepseek
+      - key: DEEPSEEK_API_KEY
+        sync: false
+      - key: DEEPSEEK_MODEL
+        value: deepseek/deepseek-chat
+      - key: DEEPSEEK_BASE_URL
+        value: https://openrouter.ai/api/v1
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: qwen/qwen3.8-27b
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: CLAUDE_MODEL
+        value: claude-3-5-sonnet-20241022
+      - key: HF_VECTOR_URL
+        value: https://outstandingom-vector.hf.space
+      - key: HF_KNOWLEDGE_URL
+        value: https://outstandingom-knowledge-graph-env.hf.space
+      - key: MCP_SERVER_URL
+        value: https://mcp-server-2sl7.onrender.com
+      - key: MCP_API_KEY
+        value: ZmFHIloaoXil8UmO0kL6qikaZihZPrX91kvteBn92N4
+      - key: PLAYWRIGHT_MCP_EXTENSION_TOKEN
+        value: ZmFHIloaoXil8UmO0kL6qikaZihZPrX91kvteBn92N4
+      - key: SUPABASE_URL
+        value: https://vtlmgubzcktztkuymtir.supabase.co
+      - key: SUPABASE_ANON_KEY
+        value: sb_publishable_0Qoicwxg64tkFReoDSKJ3g_dOSZJPCE

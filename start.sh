@@ -8,7 +8,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 echo "========================================================================"
-echo "🛡️  CTF AI Orchestrator — 1-Click Automated Setup & Launch Command Center"
+echo "🛡️   CTF AI Orchestrator — 1-Click Automated Setup & Launch Command Center"
 echo "========================================================================"
 echo ""
 
@@ -20,15 +20,15 @@ if ! command -v python3 &> /dev/null; then
 fi
 
 PY_VER=$(python3 --version)
-echo "✅ [1/5] Python Environment: $PY_VER"
+echo "✅ [1/7] Python Environment: $PY_VER"
 
 # 2. Auto-initialize .env if missing
 if [ ! -f ".env" ]; then
     if [ -f ".env.example" ]; then
-        echo "⚙️  [2/5] Creating .env from .env.example..."
+        echo "⚙️   [2/7] Creating .env from .env.example..."
         cp .env.example .env
     else
-        echo "⚙️  [2/5] Initializing default .env file..."
+        echo "⚙️   [2/7] Initializing default .env file..."
         cat << 'EOF' > .env
 LLM_PROVIDER=groq
 GROQ_API_KEY=
@@ -45,32 +45,52 @@ SUPABASE_ANON_KEY=
 EOF
     fi
 else
-    echo "✅ [2/5] Environment File: .env found"
+    echo "✅ [2/7] Environment File: .env found"
 fi
 
 # 3. Auto-clone Companion Forensic Engine if missing
 PARENT_DIR="$(dirname "$SCRIPT_DIR")"
 if [ ! -d "$PARENT_DIR/forensic" ] && [ ! -d "$SCRIPT_DIR/forensic" ]; then
-    echo "📥 [3/5] Companion Forensic Engine not detected. Checking git..."
+    echo "📥 [3/7] Companion Forensic Engine not detected. Checking git..."
     if command -v git &> /dev/null; then
         echo "       Auto-cloning Forensic Engine into $PARENT_DIR/forensic ..."
         git clone --depth 1 https://github.com/outstandingom/forensic.git "$PARENT_DIR/forensic"
     else
-        echo "⚠️     [WARNING] git not found. Place forensic repository at ../forensic manually."
+        echo "⚠️      [WARNING] git not found. Place forensic repository at ../forensic manually."
     fi
 else
-    echo "✅ [3/5] Forensic Engine: Repository present"
+    echo "✅ [3/7] Forensic Engine: Repository present"
 fi
 
-# 4. Verify & Install Python Dependencies
-echo "📦 [4/5] Verifying dependencies from requirements.txt..."
-python3 -m pip install -r requirements.txt --quiet || python3 -m pip install -r requirements.txt
+# 4. Auto-clone Companion REA Reversing Engine if missing
+if [ ! -d "$PARENT_DIR/rea" ] && [ ! -d "$SCRIPT_DIR/rea" ]; then
+    echo "📥 [4/7] REA Engine not detected. Checking git..."
+    if command -v git &> /dev/null; then
+        echo "       Auto-cloning REA into $PARENT_DIR/rea ..."
+        git clone --depth 1 https://github.com/morluto/rea.git "$PARENT_DIR/rea"
+    fi
+else
+    echo "✅ [4/7] REA Engine: Repository present"
+fi
 
-# 5. Launch Command Center
+# 5. Init git submodules (jailbreaks, etc.)
+echo "⚙️  [5/7] Initializing git submodules..."
+git submodule update --init --recursive || true
+echo "✅ [5/7] Submodules ready"
+
+# 6. Verify & Install Python Dependencies and Playwright Chromium
+echo "📦 [6/7] Verifying dependencies from requirements.txt..."
+python3 -m pip install -r requirements.txt --quiet || python3 -m pip install -r requirements.txt
+echo "       Verifying Playwright Chromium headless browser..."
+python3 -m playwright install chromium --quiet >/dev/null 2>&1 || true
+
+# 7. Launch Command Center
 echo ""
 echo "========================================================================"
 echo "🚀 CTF AI Orchestrator Command Center Live on http://localhost:8080/"
-echo "   API Docs: http://localhost:8080/docs"
+echo "   API Docs:      http://localhost:8080/docs"
+echo "   Quantum Vault: http://localhost:8088/"
+echo "   Apex Gauntlet: http://localhost:8099/"
 echo "========================================================================"
 echo ""
 
